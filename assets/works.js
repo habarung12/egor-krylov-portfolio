@@ -893,7 +893,8 @@ window.WORKS = {
    "thumb": "assets/works/gnc-oct-2025/20_t.webp",
    "w": 1920,
    "h": 1080,
-   "file": "raspisanienew12.psd"
+   "file": "raspisanienew12.psd",
+   "fmt": "ДЛЯ СТРИМА"
   },
   {
    "src": "assets/works/gnc-oct-2025/21.webp",
@@ -978,6 +979,13 @@ window.WORKS = {
    "w": 1920,
    "h": 917,
    "file": "REGISRTY.psd"
+  },
+  {
+   "src": "assets/works/gnc-oct-2025/41.webp",
+   "thumb": "assets/works/gnc-oct-2025/41_t.webp",
+   "w": 644,
+   "h": 1300,
+   "file": "WIDOWBANNER1.psd"
   }
  ],
  "gnc-jun-2025": [
@@ -1208,20 +1216,6 @@ window.WORKS = {
    "w": 1920,
    "h": 1080,
    "file": "VAZNIYPOST.psd"
-  },
-  {
-   "src": "assets/works/stadium/09.webp",
-   "thumb": "assets/works/stadium/09_t.webp",
-   "w": 800,
-   "h": 800,
-   "file": "000000.psd"
-  },
-  {
-   "src": "assets/works/stadium/12.webp",
-   "thumb": "assets/works/stadium/12_t.webp",
-   "w": 644,
-   "h": 1300,
-   "file": "WIDOWBANNER1.psd"
   }
  ],
  "web": [

@@ -69,8 +69,6 @@ const all = [];   // плоский список для лайтбокса
 /* ---------- CONTACTS ---------- */
 const contacts = CONFIG.contacts.filter(c => c.url);
 const ext = c => c.url.startsWith('http') ? ' target="_blank" rel="noopener"' : '';
-$('#heroLinks').innerHTML = contacts
-  .map(c => `<a href="${c.url}"${ext(c)}>${c.label} ↗</a>`).join('');
 $('#contactList').innerHTML = contacts.map(c => `
   <div class="crow">
     <a class="crow__link" href="${c.url}"${ext(c)}>
@@ -87,8 +85,19 @@ $('#contactList').addEventListener('click', async e => {
 /* ---------- PROJECTS INDEX + WORKS ---------- */
 const total = PROJECTS.reduce((s, p) => s + (WORKS[p.id] || []).length, 0);
 $('#projCount').textContent = `${PROJECTS.length} ПРОЕКТОВ / ${total} РАБОТ`;
-$('#statProj').textContent = PROJECTS.length;
-$('#statWorks').textContent = total;
+
+/* ---------- HERO: фон из работ ---------- */
+(function heroBg() {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pick = (p, n) => WORKS[p] && WORKS[p][n];
+  const slides = [pick('gnc-sep-2026', 0), pick('gnc-may-2026', 0), pick('gnc-oct-2025', 0), pick('stadium', 0), pick('gnc-jun-2025', 0)].filter(Boolean);
+  const box = $('#heroBg');
+  slides.forEach((w, i) => box.insertAdjacentHTML('beforeend', `<img src="${w.src}" alt="" decoding="async"${i ? ' loading="lazy"' : ''}>`));
+  let cur = 0;
+  const show = i => { cur = i % slides.length; [...box.children].forEach((el, k) => el.classList.toggle('on', k === cur)); };
+  show(0);
+  if (!reduce) setInterval(() => show(cur + 1), 6500);
+})();
 
 $('#plist').innerHTML = PROJECTS.map((p, i) => `
   <li><a href="#p-${p.id}">
@@ -113,7 +122,7 @@ PROJECTS.forEach((p, pi) => {
     <div class="grid"></div>`;
   sec._cards = [];
   works.forEach((w, k) => {
-    const f = fmt(w.w, w.h, p.id);
+    const f = w.fmt || fmt(w.w, w.h, p.id);   // w.fmt — ручная категория из works.js
     const idx = all.push({ ...w, fmt: f, proj: p.title }) - 1;
     const a = document.createElement('button');
     a.className = 'card'; a.dataset.fmt = f; a.dataset.i = idx;
@@ -163,7 +172,7 @@ let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() 
 
 
 /* ---------- FILTERS ---------- */
-const FORMATS = ['ВСЕ', 'БАННЕР 16:9', 'ПОСТ 1:1', 'ВЕРТИКАЛЬ / TWITCH', 'ШАПКА / ПЛАШКА', 'ЛОГОТИП', 'WEB'];
+const FORMATS = ['ВСЕ', 'БАННЕР 16:9', 'ПОСТ 1:1', 'ВЕРТИКАЛЬ / TWITCH', 'ШАПКА / ПЛАШКА', 'ДЛЯ СТРИМА', 'ЛОГОТИП', 'WEB'];
 let current = 'ВСЕ';
 $('#filters').innerHTML = FORMATS.map(f => {
   const n = f === 'ВСЕ' ? all.length : all.filter(w => w.fmt === f).length;
@@ -223,6 +232,9 @@ addEventListener('keydown', e => {
 
 /* ---------- NAV ---------- */
 const nav = $('.nav'), burger = $('.nav__burger');
-burger.onclick = () => { const o = nav.classList.toggle('open'); burger.setAttribute('aria-expanded', o); };
-nav.querySelectorAll('.nav__links a').forEach(a => a.addEventListener('click', () => nav.classList.remove('open')));
+const setMenu = o => { nav.classList.toggle('open', o); burger.setAttribute('aria-expanded', o); document.body.style.overflow = o ? 'hidden' : ''; };
+burger.onclick = () => setMenu(!nav.classList.contains('open'));
+$('.nav__backdrop').onclick = () => setMenu(false);
+addEventListener('keydown', e => { if (e.key === 'Escape' && nav.classList.contains('open')) setMenu(false); });
+nav.querySelectorAll('.nav__links a').forEach(a => a.addEventListener('click', () => setMenu(false)));
 $('#year').textContent = new Date().getFullYear();

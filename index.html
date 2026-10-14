@@ -8,20 +8,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;700&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=45">
+<link rel="stylesheet" href="styles.css?v=65">
 </head>
 <body>
 
-<!-- Вертикальная лайм-полоса (как у Marathon) -->
 <div class="shell">
-<aside class="rail" aria-hidden="true">
-  <div class="rail__text">GRAPHIC DESIGN / ESPORTS</div>
-  <div class="rail__checker"></div>
-</aside>
 
 <header class="nav">
-  <a class="nav__brand" href="#top">[●] ГЛАВНАЯ</a>
   <nav class="nav__links">
+    <a href="#top">ГЛАВНАЯ</a>
     <a href="#projects">ПРОЕКТЫ <i>[↗]</i></a>
     <a href="#works">РАБОТЫ <i>[↗]</i></a>
     <a href="#services">УСЛУГИ <i>[↗]</i></a>
@@ -31,44 +26,25 @@
   <a class="nav__cta" href="#contact">НАПИСАТЬ</a>
   <button class="nav__burger" aria-label="Меню" aria-expanded="false"><span></span><span></span></button>
 </header>
+<div class="nav__backdrop" aria-hidden="true"></div>
 
 <main id="top">
 
-  <!-- HERO: имя сверху, информационная полоса снизу -->
+  <!-- HERO: в стиле Marathon «Available now» — фон из работ + лаймовая плашка обо мне -->
   <section class="hero" id="hero">
-    <div class="hero__stage" id="heroStage">
-      <div class="hero__grid" aria-hidden="true"></div>
-      <div class="name" aria-hidden="true">
-        <div class="name__layer"><span class="w1">EGOR</span><span class="w2">KRYLOV</span></div>
-      </div>
-      <h1 class="sr-only">Egor Krylov — графический дизайнер</h1>
-      <span class="barcode hero__barcode" aria-hidden="true"></span>
+    <div class="hero__bg" id="heroBg" aria-hidden="true"></div>
+    <div class="hero__tint" aria-hidden="true"></div>
+    <div class="mcover" aria-hidden="true">
+      <div class="mcover__name"><span>EGOR</span><span>KRYLOV</span></div>
     </div>
 
-    <div class="hero__bar">
-      <div class="hero__cell hero__bio">
-        <p class="label">ОБО МНЕ</p>
-        <p class="hero__bio-text"><b>Графический дизайнер.</b> Делаю визуал для киберспортивных турниров — от первого анонса до баннера «Спасибо за участие». Отвечал за оформление турнира GNC по Overwatch (ранее — GandonCup): соцсети, стримы, YouTube и сайт.</p>
-        <ul class="hero__tools"><li>PHOTOSHOP</li><li>ILLUSTRATOR</li><li>AFTER EFFECTS</li></ul>
+    <div class="hbox">
+      <div class="hbox__top">
+        <h1 class="hbox__title">ЕГОР КРЫЛОВ</h1>
+        <p class="hbox__text">Графический дизайнер, специализируюсь на киберспорте. Делаю визуал турниров от первого анонса до баннера «Спасибо за участие». Отвечаю за оформление GNC — турнира по Overwatch (ранее GandonCup): соцсети, стримы, YouTube и сайт.</p>
       </div>
-
-      <div class="hero__cell hero__about">
-        <h2>ДИЗАЙН ДЛЯ<br>КИБЕРСПОРТА</h2>
-        <div class="hero__stats">
-          <div><b id="statProj">—</b><span>ПРОЕКТОВ</span></div>
-          <div><b id="statWorks">—</b><span>РАБОТ</span></div>
-          <div><b>2024</b><span>— 2026</span></div>
-        </div>
-        <a class="btn btn--light" href="#works">СМОТРЕТЬ РАБОТЫ ↗</a>
-      </div>
-
-      <div class="hero__hire">
-        <div class="hero__hire-top">
-          <p class="pixels">▚▞ <span>////</span></p>
-          <h2>ОТКРЫТ ДЛЯ ЗАКАЗОВ</h2>
-          <p class="mono">ТУРНИРЫ, СТРИМЫ, СОЦСЕТИ И ЛОГОТИПЫ. ПИШИТЕ — ОБСУДИМ ЗАДАЧУ И СРОКИ.</p>
-        </div>
-        <div class="hero__links" id="heroLinks"></div>
+      <div class="hbox__bottom">
+        <a class="hbox__cta" href="#works">СМОТРЕТЬ РАБОТЫ</a>
       </div>
     </div>
   </section>
@@ -102,6 +78,7 @@
       <article><span class="mono">03</span><h3>YouTube</h3><p>Шапки каналов и превью видео, которые читаются в ленте.</p></article>
       <article><span class="mono">04</span><h3>Логотипы</h3><p>Знаки и логотипы для турниров, команд и проектов.</p></article>
       <article><span class="mono">05</span><h3>Web / UI</h3><p>Концепты страниц турниров: каталог, сетка, команды, зал славы.</p></article>
+      <article><span class="mono">06</span><h3>Программы</h3><p>Photoshop, Illustrator, After Effects и Figma — от макета и иллюстраций до анимации и интерфейсов.</p></article>
     </div>
   </section>
 
@@ -130,7 +107,7 @@
   <button class="lb__nav lb__next" aria-label="Следующая">›</button>
 </div>
 
-<script src="assets/works.js?v=45"></script>
-<script src="app.js?v=45"></script>
+<script src="assets/works.js?v=65"></script>
+<script src="app.js?v=65"></script>
 </body>
 </html>
