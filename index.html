@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Egor Krylov — Esports Graphic Design</title>
+<meta name="description" content="Портфолио Егора Крылова: айдентика киберспортивных турниров, баннеры для Twitch, Discord, Telegram и YouTube, логотипы и веб-концепты.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;700&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=45">
+</head>
+<body>
+
+<!-- Вертикальная лайм-полоса (как у Marathon) -->
+<div class="shell">
+<aside class="rail" aria-hidden="true">
+  <div class="rail__text">GRAPHIC DESIGN / ESPORTS</div>
+  <div class="rail__checker"></div>
+</aside>
+
+<header class="nav">
+  <a class="nav__brand" href="#top">[●] ГЛАВНАЯ</a>
+  <nav class="nav__links">
+    <a href="#projects">ПРОЕКТЫ <i>[↗]</i></a>
+    <a href="#works">РАБОТЫ <i>[↗]</i></a>
+    <a href="#services">УСЛУГИ <i>[↗]</i></a>
+    <a href="#contact">КОНТАКТЫ <i>[↗]</i></a>
+    <a href="https://www.behance.net/overwather" target="_blank" rel="noopener">BEHANCE <i>[↗]</i></a>
+  </nav>
+  <a class="nav__cta" href="#contact">НАПИСАТЬ</a>
+  <button class="nav__burger" aria-label="Меню" aria-expanded="false"><span></span><span></span></button>
+</header>
+
+<main id="top">
+
+  <!-- HERO: имя сверху, информационная полоса снизу -->
+  <section class="hero" id="hero">
+    <div class="hero__stage" id="heroStage">
+      <div class="hero__grid" aria-hidden="true"></div>
+      <div class="name" aria-hidden="true">
+        <div class="name__layer"><span class="w1">EGOR</span><span class="w2">KRYLOV</span></div>
+      </div>
+      <h1 class="sr-only">Egor Krylov — графический дизайнер</h1>
+      <span class="barcode hero__barcode" aria-hidden="true"></span>
+    </div>
+
+    <div class="hero__bar">
+      <div class="hero__cell hero__bio">
+        <p class="label">ОБО МНЕ</p>
+        <p class="hero__bio-text"><b>Графический дизайнер.</b> Делаю визуал для киберспортивных турниров — от первого анонса до баннера «Спасибо за участие». Отвечал за оформление турнира GNC по Overwatch (ранее — GandonCup): соцсети, стримы, YouTube и сайт.</p>
+        <ul class="hero__tools"><li>PHOTOSHOP</li><li>ILLUSTRATOR</li><li>AFTER EFFECTS</li></ul>
+      </div>
+
+      <div class="hero__cell hero__about">
+        <h2>ДИЗАЙН ДЛЯ<br>КИБЕРСПОРТА</h2>
+        <div class="hero__stats">
+          <div><b id="statProj">—</b><span>ПРОЕКТОВ</span></div>
+          <div><b id="statWorks">—</b><span>РАБОТ</span></div>
+          <div><b>2024</b><span>— 2026</span></div>
+        </div>
+        <a class="btn btn--light" href="#works">СМОТРЕТЬ РАБОТЫ ↗</a>
+      </div>
+
+      <div class="hero__hire">
+        <div class="hero__hire-top">
+          <p class="pixels">▚▞ <span>////</span></p>
+          <h2>ОТКРЫТ ДЛЯ ЗАКАЗОВ</h2>
+          <p class="mono">ТУРНИРЫ, СТРИМЫ, СОЦСЕТИ И ЛОГОТИПЫ. ПИШИТЕ — ОБСУДИМ ЗАДАЧУ И СРОКИ.</p>
+        </div>
+        <div class="hero__links" id="heroLinks"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROJECTS INDEX -->
+  <section class="section" id="projects">
+    <div class="section__head">
+      <h2>ПРОЕКТЫ</h2>
+      <p class="mono muted" id="projCount"></p>
+    </div>
+    <ol class="plist" id="plist"></ol>
+  </section>
+
+  <!-- WORKS -->
+  <section class="section section--works" id="works">
+    <div class="section__head">
+      <h2>РАБОТЫ</h2>
+    </div>
+    <div class="filters" id="filters" role="tablist"></div>
+    <div id="projects-wrap"></div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="section" id="services">
+    <div class="section__head">
+      <h2>ЧТО Я ДЕЛАЮ</h2>
+    </div>
+    <div class="services">
+      <article><span class="mono">01</span><h3>Айдентика турнира</h3><p>Ключевой визуал, логотип, цвет и типографика — единый стиль для всех площадок.</p></article>
+      <article><span class="mono">02</span><h3>Соцсети</h3><p>Анонсы, расписания, составы команд, итоги, розыгрыши для Telegram и Discord.</p></article>
+      <article><span class="mono">03</span><h3>YouTube</h3><p>Шапки каналов и превью видео, которые читаются в ленте.</p></article>
+      <article><span class="mono">04</span><h3>Логотипы</h3><p>Знаки и логотипы для турниров, команд и проектов.</p></article>
+      <article><span class="mono">05</span><h3>Web / UI</h3><p>Концепты страниц турниров: каталог, сетка, команды, зал славы.</p></article>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="contact" id="contact">
+    <div class="contact__left">
+      <h2><span>СВЯЗАТЬСЯ</span> <span>СО МНОЙ</span></h2>
+      <p>Пишите в Telegram или на почту — обсудим задачу, сроки и стоимость.</p>
+    </div>
+    <div class="contact__list" id="contactList"></div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span class="mono">© <span id="year"></span> EGOR KRYLOV</span>
+  <span class="mono muted">ВСЕ ИГРОВЫЕ ПЕРСОНАЖИ И ЛОГОТИПЫ ПРИНАДЛЕЖАТ ИХ ПРАВООБЛАДАТЕЛЯМ</span>
+  <a class="mono" href="#top">НАВЕРХ ↑</a>
+</footer>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lb" id="lb" hidden>
+  <button class="lb__close" aria-label="Закрыть">[ ✕ ]</button>
+  <button class="lb__nav lb__prev" aria-label="Предыдущая">‹</button>
+  <figure class="lb__fig"><img id="lbImg" alt=""><figcaption class="mono" id="lbCap"></figcaption></figure>
+  <button class="lb__nav lb__next" aria-label="Следующая">›</button>
+</div>
+
+<script src="assets/works.js?v=45"></script>
+<script src="app.js?v=45"></script>
+</body>
+</html>
