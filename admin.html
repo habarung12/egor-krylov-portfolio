@@ -64,9 +64,11 @@
           <label>Дата / подпись<input id="projectDate" maxlength="60" placeholder="ОКТ 2026"></label>
           <label class="wide">Описание<textarea id="projectDescription" maxlength="1000" placeholder="Краткое описание проекта"></textarea></label>
           <label>Цвета через запятую<input id="projectColors" value="#C6FF00, #141414, #F2F2F2"></label>
-          <label>Порядок отображения<input id="projectOrder" type="number" value="0"></label>
+          <label>Позиция на сайте<input id="projectOrder" type="number" min="0" step="1" value="0"></label>
+          <p class="wide" style="margin:0">1 — самый верх списка (PRJ_01), 2 — второй и т.д. 0 — в конец. Если у двух проектов одна позиция, выше будет более новый.</p>
           <div class="wide">
             <button class="btn btn--primary" type="submit">Сохранить раздел</button>
+            <button class="btn btn--ghost" type="button" id="projectToTop">В самое начало</button>
             <button class="btn btn--ghost" type="button" id="cancelProjectEdit">Отмена</button>
           </div>
         </form>
