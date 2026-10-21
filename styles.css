@@ -39,12 +39,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .nav{position:sticky;top:0;z-index:40;height:var(--nav);display:flex;align-items:center;background:#000;color:var(--white);border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:.06em}
 .checker{display:inline-block;width:18px;height:18px;flex:none;background:conic-gradient(#000 25%,transparent 0 50%,#000 0 75%,transparent 0) 0 0/9px 9px}
 .nav__links{display:flex;gap:6px;padding-left:10px}
-.nav__links a{white-space:nowrap;padding:6px 10px;border-radius:4px;transition:background .15s,color .15s}
+.nav__links a{white-space:nowrap;padding:6px 10px;border-radius:4px}
 .nav__links i{font-style:normal;color:var(--muted)}
-.nav__cta{margin:0 8px 0 auto;white-space:nowrap;padding:6px 10px;border-radius:4px;transition:background .15s,color .15s}
+.nav__cta{margin:0 8px 0 auto;white-space:nowrap;padding:6px 10px;border-radius:4px}
 /* подсветка при наведении — только там, где есть мышь (на телефоне она «залипала» при касании) */
 @media (hover:hover){
-  .nav__links a:hover,.nav__cta:hover{background:var(--acid);color:#000}
+  /* плавно появляется, но гаснет сразу — иначе при переходе между кнопками на миг горят обе */
+  .nav__links a:hover,.nav__cta:hover{background:var(--acid);color:#000;transition:background .12s,color .12s}
   .nav__links a:hover i{color:#000}
 }
 .nav__links a:active,.nav__cta:active{background:var(--acid);color:#000}
