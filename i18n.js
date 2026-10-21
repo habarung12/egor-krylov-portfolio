@@ -28,7 +28,12 @@
     document.querySelectorAll('[aria-label]').forEach(el => el.setAttribute('aria-label', t(el.getAttribute('aria-label'))));
     // Тексты из админки: оба варианта лежат в data-ru / data-en
     document.querySelectorAll('[data-en]').forEach(el => { el.textContent = en && el.dataset.en ? el.dataset.en : el.dataset.ru; });
-    document.querySelectorAll('[data-fmt]').forEach(el => { el.dataset.label = t(el.dataset.fmt); });
+    // Подпись категории на карточке; свои категории из админки — в PORTFOLIO_FORMAT_LABELS (app.js)
+    const own = window.PORTFOLIO_FORMAT_LABELS || {};
+    document.querySelectorAll('[data-fmt]').forEach(el => {
+      const c = own[el.dataset.fmt];
+      el.dataset.label = c ? (en && c.en || c.ru) : t(el.dataset.fmt);
+    });
   };
   window.setPortfolioLang = lang => {
     window.PORTFOLIO_LANG = lang;

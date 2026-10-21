@@ -101,12 +101,18 @@ async function fetchAdminData() {
     return r.json();
   };
   try {
-    const [projects, works, hidden] = await Promise.all([
+    // Необязательных таблиц может не быть, если SQL из supabase-setup.sql ещё не выполнен заново
+    const [projects, works, hidden, categories, archiveFormats] = await Promise.all([
       get('portfolio_projects?select=*&order=sort_order.asc'),
       get('portfolio_works?select=*&order=sort_order.asc,created_at.asc'),
-      get('portfolio_hidden_works?select=src', true)   // таблицы может не быть, если SQL ещё не выполнен
+      get('portfolio_hidden_works?select=src', true),
+      get('portfolio_categories?select=*&order=sort_order.asc,created_at.asc', true),
+      get('portfolio_archive_formats?select=src,format', true)
     ]);
-    return { projects, works, hidden: hidden.map(h => h.src) };
+    return {
+      projects, works, hidden: hidden.map(h => h.src), categories,
+      formats: Object.fromEntries(archiveFormats.map(f => [f.src, f.format]))
+    };
   } finally { clearTimeout(timer); }
 }
 
@@ -114,10 +120,18 @@ async function fetchAdminData() {
 function buildModel(admin) {
   const hidden = new Set(admin.hidden || []);
   const works = {};
+  // Свои категории: подписи для фильтров, карточек и i18n.js
+  const categories = admin.categories || [];
+  FORMAT_LABELS = window.PORTFOLIO_FORMAT_LABELS =
+    Object.fromEntries(categories.map(c => [c.id, { ru: c.name, en: c.name_en || '' }]));
+  // ссылка на удалённую категорию — работа снова определяется по пропорциям
+  const known = f => (BUILTIN_FORMATS.includes(f) || FORMAT_LABELS[f]) ? f : undefined;
+  const archiveFmt = admin.formats || {};
   const projects = window.PORTFOLIO_PROJECTS
     .map(p => ({ ...p }))
     .filter(p => {
-      const list = (window.WORKS[p.id] || []).filter(w => !hidden.has(w.src));
+      const list = (window.WORKS[p.id] || []).filter(w => !hidden.has(w.src))
+        .map(w => ({ ...w, fmt: known(archiveFmt[w.src]) || w.fmt }));
       works[p.id] = list;
       // архивный проект, в котором скрыли все работы, тоже убираем
       return list.length || !(window.WORKS[p.id] || []).length;
@@ -140,16 +154,16 @@ function buildModel(admin) {
     if (!works[w.project_id]) return;
     works[w.project_id].push({
       src: w.image_url, thumb: w.image_url, w: w.width || 1200, h: w.height || 800,
-      file: w.file_name || w.title || 'portfolio-image', fmt: w.format || undefined,
+      file: w.file_name || w.title || 'portfolio-image', fmt: known(w.format),
       adminId: w.id, adminTitle: w.title || '', adminTitleEn: w.title_en || ''
     });
   });
-  return { projects, works };
+  return { projects, works, categories: categories.map(c => c.id) };
 }
 
 /* ---------- PROJECTS INDEX + WORKS ---------- */
 const wrap = $('#projects-wrap');
-function render({ projects, works: byProject }) {
+function render({ projects, works: byProject, categories }) {
   // сохраняем, что пользователь уже раскрыл, и закрываем просмотр — индексы работ поменяются
   const expanded = new Set([...document.querySelectorAll('.proj.expanded')].map(s => s.id));
   if (!lb.hidden) close();
@@ -206,9 +220,15 @@ function render({ projects, works: byProject }) {
     layout(sec);
   });
 
-  $('#filters').innerHTML = FORMATS.map(f => {
+  // встроенные категории — всегда, свои — только если в них есть работы
+  const filters = ['ВСЕ', ...BUILTIN_FORMATS, ...categories.filter(id => all.some(w => w.fmt === id))];
+  if (!filters.includes(current)) current = 'ВСЕ';
+  $('#filters').innerHTML = filters.map(f => {
     const n = f === 'ВСЕ' ? all.length : all.filter(w => w.fmt === f).length;
-    return `<button role="tab" aria-selected="${f === current}" data-f="${f}">${f}<sup>${n}</sup></button>`;
+    const label = FORMAT_LABELS[f]
+      ? `<span data-ru="${esc(FORMAT_LABELS[f].ru)}" data-en="${esc(FORMAT_LABELS[f].en)}">${esc(FORMAT_LABELS[f].ru)}</span>`
+      : f;
+    return `<button role="tab" aria-selected="${f === current}" data-f="${esc(f)}">${label}<sup>${n}</sup></button>`;
   }).join('');
   applyFilter();
   window.translatePortfolio();
@@ -253,7 +273,10 @@ let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() 
 
 
 /* ---------- FILTERS ---------- */
-const FORMATS = ['ВСЕ', 'БАННЕР 16:9', 'ПОСТ 1:1', 'ВЕРТИКАЛЬ / TWITCH', 'ШАПКА / ПЛАШКА', 'ДЛЯ СТРИМА', 'ЛОГОТИП', 'WEB'];
+const BUILTIN_FORMATS = ['БАННЕР 16:9', 'ПОСТ 1:1', 'ВЕРТИКАЛЬ / TWITCH', 'ШАПКА / ПЛАШКА', 'ДЛЯ СТРИМА', 'ЛОГОТИП', 'WEB'];
+let FORMAT_LABELS = {};   // свои категории из админки: id → { ru, en }
+// Название категории на текущем языке
+const fmtLabel = f => FORMAT_LABELS[f] ? (isEn() && FORMAT_LABELS[f].en || FORMAT_LABELS[f].ru) : tr(f);
 let current = 'ВСЕ';
 $('#filters').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -295,7 +318,7 @@ function workTitle(w) {
   return isEn() ? (p.en ? p.en.title || p.title : tr(p.title)) : p.title;
 }
 function labelCard(c) {
-  const w = all[c.dataset.i], text = `${workTitle(w)} — ${tr(w.fmt)}`;
+  const w = all[c.dataset.i], text = `${workTitle(w)} — ${fmtLabel(w.fmt)}`;
   c.setAttribute('aria-label', text); c.firstChild.alt = text;
 }
 addEventListener('portfolio:lang', () => {
@@ -305,8 +328,8 @@ addEventListener('portfolio:lang', () => {
 function open(i) {
   cur = i; const w = all[i];
   const name = workTitle(w);
-  lbImg.src = w.src; lbImg.alt = `${name} — ${tr(w.fmt)}`;
-  lbCap.textContent = `${name} // ${tr(w.fmt)} // ${w.w}×${w.h}`;
+  lbImg.src = w.src; lbImg.alt = `${name} — ${fmtLabel(w.fmt)}`;
+  lbCap.textContent = `${name} // ${fmtLabel(w.fmt)} // ${w.w}×${w.h}`;
   lb.hidden = false; document.body.style.overflow = 'hidden';
 }
 function close() { lb.hidden = true; lbImg.src = ''; document.body.style.overflow = ''; }

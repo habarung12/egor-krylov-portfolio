@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;700&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=72">
+<link rel="stylesheet" href="styles.css?v=73">
 <style>
 .admin{max-width:1100px;margin:0 auto;padding:clamp(20px,5vw,64px)}
 .admin h1{font-size:clamp(28px,5vw,54px);text-transform:uppercase;margin-bottom:12px}
@@ -53,6 +53,9 @@
 .tile--broken{border-color:#ff6b6b}
 .tile--hidden .tile__img img{opacity:.25}
 .tile__badge--hidden{background:#ff6b6b}
+.viewer__archive{display:grid;gap:10px}
+.cat-builtin{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 18px}
+.cat-builtin span{padding:5px 9px;border:1px solid var(--line);border-radius:3px;font:11px var(--f-mono);color:var(--muted)}
 .viewer__archive p{font:12px/1.5 var(--f-mono);color:var(--muted);margin:0 0 10px}
 .viewer{position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:minmax(0,1fr) 340px;background:rgba(0,0,0,.94)}
 .viewer__img{display:grid;place-items:center;padding:24px;min-height:0}
@@ -120,6 +123,24 @@
         <div id="projectList" class="admin-list"></div>
       </section>
 
+      <section class="admin-card" id="categorySection">
+        <h2 id="categoryFormTitle">Категории для фильтров</h2>
+        <p>Встроенные категории есть всегда. Свои появляются в фильтрах сайта, когда в них есть хотя бы одна работа.</p>
+        <div class="cat-builtin" id="builtinCategories"></div>
+        <form id="categoryForm" class="admin-grid">
+          <input type="hidden" id="categoryId">
+          <label>Название<input id="categoryName" required maxlength="40" placeholder="Например, ПРЕВЬЮ YOUTUBE"></label>
+          <label>Название EN<input id="categoryNameEn" maxlength="40" placeholder="YOUTUBE THUMBNAIL"></label>
+          <label>Позиция в фильтрах<input id="categoryOrder" type="number" min="0" step="1" value="0"></label>
+          <div class="wide">
+            <button class="btn btn--primary" type="submit">Сохранить категорию</button>
+            <button class="btn btn--ghost" type="button" id="cancelCategoryEdit">Отмена</button>
+          </div>
+        </form>
+        <p id="categoryNote" class="hidden"></p>
+        <div id="categoryList" class="admin-list"></div>
+      </section>
+
       <section class="admin-card">
         <h2>Добавить работу</h2>
         <form id="workForm" class="admin-grid">
@@ -178,6 +199,8 @@
       </div>
     </form>
     <div id="viewerArchive" class="viewer__archive hidden">
+      <label>Категория<select id="viewerArchiveFormat"></select></label>
+      <div class="admin-actions"><button type="button" id="viewerArchiveSave">Сохранить категорию</button></div>
       <p id="viewerArchiveNote"></p>
       <div class="admin-actions"><button type="button" id="viewerHide"></button></div>
     </div>
@@ -189,9 +212,9 @@
   </aside>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="supabase-config.js?v=72"></script>
-<script src="assets/projects.js?v=72"></script>
-<script src="assets/works.js?v=72"></script>
-<script src="admin.js?v=72"></script>
+<script src="supabase-config.js?v=73"></script>
+<script src="assets/projects.js?v=73"></script>
+<script src="assets/works.js?v=73"></script>
+<script src="admin.js?v=73"></script>
 </body>
 </html>

@@ -14,6 +14,8 @@
   const db = window.supabase.createClient(window.PORTFOLIO_SUPABASE_URL, window.PORTFOLIO_SUPABASE_ANON_KEY);
   let projects = [], works = [];
   let hiddenSrc = new Set(), hiddenReady = false;   // скрытые архивные работы
+  let categories = [], categoriesReady = false;     // свои категории
+  let archiveFormats = {};                          // категории архивных работ: src → категория
   const guarded = handler => async event => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -50,16 +52,20 @@
       return status('У этого аккаунта нет прав администратора. Добавь его UUID в portfolio_admins через SQL Editor.');
     }
     $('loginPanel').classList.add('hidden'); $('dashboard').classList.remove('hidden');
-    const [p, w, h] = await Promise.all([
+    const [p, w, h, c, af] = await Promise.all([
       db.from('portfolio_projects').select('*').order('sort_order', { ascending: true }),
       db.from('portfolio_works').select('*').order('sort_order', { ascending: true }),
-      db.from('portfolio_hidden_works').select('src')
+      db.from('portfolio_hidden_works').select('src'),
+      db.from('portfolio_categories').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+      db.from('portfolio_archive_formats').select('src, format')
     ]);
     if (p.error || w.error) return status('Ошибка загрузки: ' + (p.error || w.error).message);
     projects = p.data || []; works = w.data || [];
     // Нет таблицы — значит, SQL из supabase-setup.sql ещё не выполнен заново
     hiddenReady = !h.error; hiddenSrc = new Set((h.data || []).map(x => x.src));
-    renderProjects(); renderProjectSelect(); renderGallery();
+    categoriesReady = !c.error && !af.error; categories = c.data || [];
+    archiveFormats = Object.fromEntries((af.data || []).map(x => [x.src, x.format]));
+    renderProjects(); renderProjectSelect(); renderCategories(); renderFormatSelects(); renderGallery();
     status('Данные загружены.');
   }    
   function sortedProjects() {
@@ -183,7 +189,11 @@
   }
 
   /* ---------- Категории (те же, что в фильтрах на сайте, см. app.js) ---------- */
-  const FORMATS = ['БАННЕР 16:9', 'ПОСТ 1:1', 'ВЕРТИКАЛЬ / TWITCH', 'ШАПКА / ПЛАШКА', 'ДЛЯ СТРИМА', 'ЛОГОТИП', 'WEB'];
+  const BUILTIN_FORMATS = ['БАННЕР 16:9', 'ПОСТ 1:1', 'ВЕРТИКАЛЬ / TWITCH', 'ШАПКА / ПЛАШКА', 'ДЛЯ СТРИМА', 'ЛОГОТИП', 'WEB'];
+  // Все категории: встроенные хранятся по названию, свои — по id (cat-…)
+  const allFormats = () => [...BUILTIN_FORMATS, ...categories.map(c => c.id)];
+  const fmtName = f => categories.find(c => c.id === f)?.name || f;
+  const knownFormat = f => (f && allFormats().includes(f)) ? f : '';
   // Как сайт определяет категорию, если она не выбрана вручную (копия fmt() из app.js)
   function autoFormat(w, h, projectId) {
     if (projectId === 'web') return 'WEB';
@@ -194,9 +204,77 @@
     if (r >= 0.9) return 'ПОСТ 1:1';
     return 'ВЕРТИКАЛЬ / TWITCH';
   }
-  const formatOptions = FORMATS.map(f => `<option value="${f}">${f}</option>`).join('');
-  $('workFormat').innerHTML = $('viewerFormat').innerHTML = '<option value="">Автоматически (по пропорциям)</option>' + formatOptions;
-  $('galFormat').innerHTML = '<option value="all">Все категории</option>' + formatOptions;
+  // Перестраивает все выпадающие списки категорий, сохраняя выбранные значения
+  function renderFormatSelects() {
+    const options = allFormats().map(f => `<option value="${escapeHtml(f)}">${escapeHtml(fmtName(f))}</option>`).join('');
+    const fill = (id, first) => { const el = $(id), keep = el.value; el.innerHTML = first + options; el.value = keep; if (el.selectedIndex < 0) el.selectedIndex = 0; };
+    fill('workFormat', '<option value="">Автоматически (по пропорциям)</option>');
+    fill('viewerFormat', '<option value="">Автоматически (по пропорциям)</option>');
+    fill('viewerArchiveFormat', '<option value="">Как в архиве (по умолчанию)</option>');
+    fill('galFormat', '<option value="all">Все категории</option>');
+  }
+  renderFormatSelects();
+
+  /* ---------- Свои категории ---------- */
+  function renderCategories() {
+    $('builtinCategories').innerHTML = BUILTIN_FORMATS.map(f => `<span>${f}</span>`).join('');
+    $('categoryForm').classList.toggle('hidden', !categoriesReady);
+    $('categoryNote').classList.toggle('hidden', categoriesReady);
+    $('categoryNote').textContent = 'Чтобы добавлять свои категории, выполни заново supabase-setup.sql в Supabase → SQL Editor (добавились таблицы portfolio_categories и portfolio_archive_formats).';
+    const used = id => works.filter(w => w.format === id).length + Object.values(archiveFormats).filter(f => f === id).length;
+    $('categoryList').innerHTML = categories.map(c => `<div class="admin-item">
+      <div><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.name_en || 'без EN')} · ${used(c.id)} работ · позиция: ${Number(c.sort_order) || 0}</small></div>
+      <div class="admin-actions"><button type="button" data-show-category="${c.id}">Работы</button><button type="button" data-edit-category="${c.id}">Изменить</button><button type="button" data-delete-category="${c.id}">Удалить</button></div>
+    </div>`).join('') || (categoriesReady ? '<p>Своих категорий пока нет.</p>' : '');
+  }
+  function resetCategoryForm() {
+    $('categoryForm').reset(); $('categoryId').value = ''; $('categoryOrder').value = 0;
+    $('categoryFormTitle').textContent = 'Категории для фильтров';
+  }
+  $('cancelCategoryEdit').addEventListener('click', resetCategoryForm);
+  $('categoryForm').addEventListener('submit', guarded(async () => {
+    const id = $('categoryId').value;
+    const payload = {
+      name: $('categoryName').value.trim().toUpperCase(),
+      name_en: $('categoryNameEn').value.trim().toUpperCase(),
+      sort_order: Math.max(0, Math.floor(Number($('categoryOrder').value)) || 0)
+    };
+    if (!payload.name) return status('Введи название категории.');
+    if (BUILTIN_FORMATS.includes(payload.name) || categories.some(c => c.name === payload.name && c.id !== id))
+      return status('Категория с таким названием уже есть.');
+    const result = id
+      ? await db.from('portfolio_categories').update(payload).eq('id', id)
+      : await db.from('portfolio_categories').insert(payload);
+    if (result.error) return status('Не удалось сохранить категорию: ' + result.error.message);
+    resetCategoryForm(); await refresh(); status('Категория сохранена.');
+  }));
+  $('categoryList').addEventListener('click', async e => {
+    const show = e.target.closest('[data-show-category]');
+    const edit = e.target.closest('[data-edit-category]');
+    const del = e.target.closest('[data-delete-category]');
+    if (show) {
+      $('galFormat').value = show.dataset.showCategory; $('galProject').value = 'all'; $('galSource').value = 'all'; $('galSearch').value = '';
+      renderGallery(); $('gallerySection').scrollIntoView({ behavior: 'smooth' });
+    }
+    if (edit) {
+      const c = categories.find(x => x.id === edit.dataset.editCategory); if (!c) return;
+      $('categoryId').value = c.id; $('categoryName').value = c.name; $('categoryNameEn').value = c.name_en || '';
+      $('categoryOrder').value = c.sort_order || 0;
+      $('categoryFormTitle').textContent = 'Редактировать категорию'; $('categoryName').focus();
+    }
+    if (del) {
+      const c = categories.find(x => x.id === del.dataset.deleteCategory); if (!c) return;
+      if (!confirm(`Удалить категорию «${c.name}»? Её работы снова будут распределяться автоматически.`)) return;
+      const [a, b] = await Promise.all([
+        db.from('portfolio_works').update({ format: null }).eq('format', c.id),
+        db.from('portfolio_archive_formats').delete().eq('format', c.id)
+      ]);
+      if (a.error || b.error) return status('Не удалось освободить работы категории: ' + (a.error || b.error).message);
+      const { error } = await db.from('portfolio_categories').delete().eq('id', c.id);
+      if (error) return status('Не удалось удалить категорию: ' + error.message);
+      await refresh(); status('Категория удалена.');
+    }
+  });
 
   /* ---------- Просмотр всех работ сайта ---------- */
   // Порядок разделов такой же, как на сайте (см. app.js): архивные проекты
@@ -214,10 +292,10 @@
   function siteWorks() {
     return siteProjects().flatMap((p, pi) => {
       const items = p.source === 'static'
-        ? (window.WORKS?.[p.id] || []).map(w => ({ src: w.src, thumb: w.thumb || w.src, w: w.w, h: w.h, file: w.file, title: '', manualFmt: w.fmt || '', source: 'static', hidden: hiddenSrc.has(w.src) }))
+        ? (window.WORKS?.[p.id] || []).map(w => ({ src: w.src, thumb: w.thumb || w.src, w: w.w, h: w.h, file: w.file, title: '', manualFmt: knownFormat(archiveFormats[w.src]) || w.fmt || '', archiveFmt: knownFormat(archiveFormats[w.src]), source: 'static', hidden: hiddenSrc.has(w.src) }))
         : works.filter(w => w.project_id === p.id)
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.created_at < b.created_at ? -1 : 1))
-          .map(w => ({ src: w.image_url, thumb: w.image_url, w: w.width, h: w.height, file: w.file_name, title: w.title, manualFmt: w.format || '', source: 'admin', row: w }));
+          .map(w => ({ src: w.image_url, thumb: w.image_url, w: w.width, h: w.height, file: w.file_name, title: w.title, manualFmt: knownFormat(w.format), source: 'admin', row: w }));
       return items.map(w => ({ ...w, fmt: w.manualFmt || autoFormat(w.w, w.h, p.id), project: p, projectNo: pi + 1 }));
     });
   }
@@ -231,7 +309,7 @@
     sel.value = plist.some(p => p.id === keep) ? keep : 'all';
     const source = $('galSource').value, format = $('galFormat').value, q = $('galSearch').value.trim().toLowerCase();
     [...$('galFormat').options].forEach(o => {
-      if (o.value !== 'all') o.textContent = `${o.value} (${all.filter(w => w.fmt === o.value).length})`;
+      if (o.value !== 'all') o.textContent = `${fmtName(o.value)} (${all.filter(w => w.fmt === o.value).length})`;
     });
     shown = all.filter(w => (sel.value === 'all' || w.project.id === sel.value) &&
       (source === 'all' || (source === 'hidden' ? w.hidden : w.source === source)) &&
@@ -247,7 +325,7 @@
       html += `<button type="button" class="tile${w.hidden ? ' tile--hidden' : ''}" data-k="${k}" title="${escapeHtml(w.title || w.file)}">
         ${w.source === 'admin' ? '<span class="tile__badge">АДМИНКА</span>' : ''}${w.hidden ? '<span class="tile__badge tile__badge--hidden">СКРЫТА</span>' : ''}
         <span class="tile__img"><img src="${escapeHtml(w.thumb)}" alt="" loading="lazy" decoding="async"></span>
-        <span class="tile__cap">${escapeHtml(w.title || w.file || 'Работа')}<small>${w.fmt}</small></span>
+        <span class="tile__cap">${escapeHtml(w.title || w.file || 'Работа')}<small>${escapeHtml(fmtName(w.fmt))}</small></span>
       </button>`;
     });
     $('gallery').innerHTML = html || '<p>Ничего не найдено.</p>';
@@ -281,7 +359,7 @@
     const meta = [
       ['Раздел', `PRJ_${pad(w.projectNo)} · ${w.project.title}`],
       ['Файл', w.file || '—'],
-      ['Категория', w.fmt + (w.manualFmt ? '' : ' (авто)')],
+      ['Категория', fmtName(w.fmt) + (w.manualFmt ? '' : ' (авто)')],
       ['Размер', w.w && w.h ? `${w.w}×${w.h}` : '—'],
       w.row ? ['Порядок', String(w.row.sort_order ?? 0)] : null,
       w.row?.created_at ? ['Добавлено', new Date(w.row.created_at).toLocaleString('ru-RU')] : null,
@@ -292,6 +370,8 @@
     $('viewerForm').classList.toggle('hidden', !w.row);
     $('viewerArchive').classList.toggle('hidden', !!w.row);
     if (!w.row) {
+      $('viewerArchiveFormat').value = w.archiveFmt || '';
+      $('viewerArchiveFormat').disabled = $('viewerArchiveSave').disabled = !categoriesReady;
       $('viewerHide').textContent = w.hidden ? 'Вернуть на сайт' : 'Скрыть с сайта';
       $('viewerArchiveNote').textContent = w.hidden
         ? 'Работа скрыта: посетители её не видят. Файл остался в репозитории, вернуть можно в любой момент.'
@@ -300,7 +380,7 @@
     if (w.row) {
       $('viewerTitleRu').value = w.row.title || ''; $('viewerTitleEn').value = w.row.title_en || '';
       $('viewerOrder').value = w.row.sort_order || 0;
-      $('viewerFormat').value = FORMATS.includes(w.row.format) ? w.row.format : '';
+      $('viewerFormat').value = knownFormat(w.row.format);
     }
     $('viewerPos').textContent = `${viewerIndex + 1} / ${shown.length}`;
     $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden';
@@ -339,6 +419,16 @@
     const cleanup = path ? await db.storage.from('portfolio-images').remove([path]) : {};
     closeViewer(); await refresh();
     status(cleanup.error ? 'Работа удалена. Не удалось очистить файл: ' + cleanup.error.message : 'Работа удалена.');
+  });
+  $('viewerArchiveSave').addEventListener('click', async () => {
+    const w = shown[viewerIndex]; if (!w || w.row) return;
+    const format = $('viewerArchiveFormat').value, btn = $('viewerArchiveSave'); btn.disabled = true;
+    const { error } = format
+      ? await db.from('portfolio_archive_formats').upsert({ src: w.src, format })
+      : await db.from('portfolio_archive_formats').delete().eq('src', w.src);
+    btn.disabled = false;
+    if (error) return status('Не удалось сохранить категорию: ' + error.message);
+    await refresh(); reopenViewer(w.src); status('Категория сохранена.');
   });
   $('viewerHide').addEventListener('click', async () => {
     const w = shown[viewerIndex]; if (!w || w.row) return;
