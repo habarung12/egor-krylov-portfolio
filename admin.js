@@ -57,11 +57,18 @@
     projects = p.data || []; works = w.data || [];
     renderProjects(); renderWorks(); renderProjectSelect();
     status('Данные загружены.');
+  }    
+  function sortedProjects() {
+    const pos = p => Math.floor(Number(p.sort_order)) || 0;
+    const created = p => p.created_at || '';
+    return [...projects].sort((a, b) => {
+      if (!pos(a) !== !pos(b)) return pos(a) ? -1 : 1;
+      return pos(a) - pos(b) || (created(a) < created(b) ? 1 : created(a) > created(b) ? -1 : 0);
+    });
   }
-
   function renderProjects() {
-    $('projectList').innerHTML = projects.map(p => `<div class="admin-item">
-      <div><strong>${escapeHtml(p.title)}</strong><small>${escapeHtml(p.date || '')} · ${works.filter(w => w.project_id === p.id).length} работ</small></div>
+    $('projectList').innerHTML = sortedProjects().map(p => `<div class="admin-item">
+      <div><strong>${escapeHtml(p.title)}</strong><small>${escapeHtml(p.date || '')} · ${works.filter(w => w.project_id === p.id).length} работ · позиция: ${Number(p.sort_order) > 0 ? Number(p.sort_order) : 'в конец'}</small></div>
       <div class="admin-actions"><button type="button" data-edit-project="${p.id}">Изменить</button><button type="button" data-delete-project="${p.id}">Удалить</button></div>
     </div>`).join('') || '<p>Пока нет разделов, создай первый выше.</p>';
   }
