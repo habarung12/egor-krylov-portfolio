@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;700&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=67">
-<script src="i18n.js?v=67"></script>
+<link rel="stylesheet" href="styles.css?v=69">
+<script src="i18n.js?v=69"></script>
 </head>
 <body>
 
@@ -109,9 +109,11 @@
   <button class="lb__nav lb__next" aria-label="Следующая">›</button>
 </div>
 
-<script src="assets/works.js?v=67"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
+<script src="nav.js?v=69"></script>
+<script src="assets/projects.js?v=69"></script>
+<script src="assets/works.js?v=69"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js?v=69"></script>
 <script>
 async function loadManagedPortfolioContent() {
   window.PORTFOLIO_ADMIN_DATA = { projects: [] };
@@ -126,10 +128,13 @@ async function loadManagedPortfolioContent() {
       window.PORTFOLIO_SUPABASE_URL,
       window.PORTFOLIO_SUPABASE_ANON_KEY
     );
-    const [{ data: projects, error: projectError }, { data: works, error: worksError }] = await Promise.all([
+    // Если Supabase отвечает долго (бесплатный проект «просыпается»), не держим сайт пустым:
+    // через 6 секунд показываем работы из архива без новых проектов.
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase не ответил за 6 с')), 6000));
+    const [{ data: projects, error: projectError }, { data: works, error: worksError }] = await Promise.race([Promise.all([
       client.from('portfolio_projects').select('*').order('sort_order', { ascending: true }),
-      client.from('portfolio_works').select('*').order('sort_order', { ascending: true })
-    ]);
+      client.from('portfolio_works').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true })
+    ]), timeout]);
     if (projectError) throw projectError;
     if (worksError) throw worksError;
     window.PORTFOLIO_ADMIN_DATA.projects = (projects || []).map(p => ({
@@ -150,7 +155,7 @@ async function loadManagedPortfolioContent() {
 }
 loadManagedPortfolioContent().finally(() => {
   const appScript = document.createElement('script');
-  appScript.src = 'app.js?v=67';
+  appScript.src = 'app.js?v=69';
   document.body.appendChild(appScript);
 });
 </script>

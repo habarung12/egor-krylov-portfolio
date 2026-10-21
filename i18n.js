@@ -19,13 +19,46 @@
     }
     document.querySelectorAll('[aria-label]').forEach(el => el.setAttribute('aria-label', t(el.getAttribute('aria-label'))));
   };
+  /* Смена языка перезагружает страницу. Чтобы не прыгать по странице, запоминаем
+     блок, который сейчас вверху экрана, и после загрузки работ возвращаемся к нему. */
+  const SCROLL_KEY = 'portfolio-lang-scroll';
+  const navHeight = () => document.querySelector('.nav')?.offsetHeight || 0;
+  const anchors = () => [...document.querySelectorAll('#hero, #projects, #works, .proj, #services, #contact')];
+  let pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem(SCROLL_KEY)); sessionStorage.removeItem(SCROLL_KEY); } catch {}
+  if (pending) {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    document.documentElement.classList.add('lang-switching');
+    const restore = () => {
+      if (!pending) return;
+      const el = pending.id && document.getElementById(pending.id);
+      const y = el ? el.getBoundingClientRect().top + scrollY - pending.offset : pending.y;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'instant' });
+      pending = null;
+      setTimeout(() => document.documentElement.classList.remove('lang-switching'), 30);
+    };
+    addEventListener('portfolio:ready', restore);
+    setTimeout(restore, 8000);   // страховка, если app.js не загрузился
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const button = document.getElementById('languageToggle');
     button.setAttribute('aria-checked', String(window.PORTFOLIO_LANG === 'en'));
     button.onclick = () => {
       const next = window.PORTFOLIO_LANG === 'en' ? 'ru' : 'en';
       try { localStorage.setItem('portfolio-language', next); } catch {}
-      const url = new URL(location.href); url.searchParams.set('lang', next); location.assign(url);
+      // Первый блок, который виден под шапкой, и его сдвиг относительно верха экрана
+      const top = navHeight();
+      // (самый вложенный: внутри «Работ» это конкретный проект, а не весь раздел)
+      const vis = anchors().filter(a => !a.hidden && a.getBoundingClientRect().bottom > top + 1);
+      const el = vis.filter(a => a.getBoundingClientRect().top <= top + 1).pop() || vis[0];
+      try {
+        sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ id: el?.id || '', offset: el ? el.getBoundingClientRect().top : 0, y: scrollY }));
+      } catch {}
+      button.setAttribute('aria-checked', String(next === 'en'));
+      document.documentElement.classList.add('lang-switching');
+      const url = new URL(location.href); url.searchParams.set('lang', next); url.hash = '';
+      setTimeout(() => location.replace(url), 180);
     };
     window.translatePortfolio();
   });

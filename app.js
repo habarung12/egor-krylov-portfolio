@@ -10,36 +10,8 @@ const CONFIG = {
   previewCount: 12,
 };
 
-/* Проекты: порядок = порядок на сайте */
-const PROJECTS = [
-  { id: 'gnc-sep-2026', title: 'GNC · 19–20 сентября', date: 'СЕН 2026',
-    desc: 'Турнир по Overwatch при поддержке FunPay и FinalGear. Красно-серая айдентика: анонсы, расписания, розыгрыши, итоги, превью для YouTube, панели Twitch и баннеры для сайта.',
-    colors: ['#9E1B22', '#E3DDDC', '#1A1A1A'] },
-  { id: 'gnc-aug-2026', title: 'GNC · 1–2 августа', date: 'АВГ 2026',
-    desc: 'Тёмная фиолетовая айдентика летнего GNC: открытие регистрации, расписания матчей, MVP, призовой фонд, Twitch-панели и шапки YouTube.',
-    colors: ['#6A5BD8', '#121218', '#F2F2F2'] },
-  { id: 'gnc-may-2026', title: 'GNC · 2–3 мая', date: 'МАЙ 2026',
-    desc: 'Весенний GNC: светлая модульная сетка, чёрные плашки и цветные акценты. Превью, регистрация, составы команд, трансляции, результаты и баннеры для стримеров.',
-    colors: ['#E4E4E4', '#000000', '#2C6FB7', '#E1A322'] },
-  { id: 'gnc-oct-2025', title: 'GNC · 25–26 октября', date: 'ОКТ 2025',
-    desc: 'Октябрьский GNC 2025: бело-фиолетовая система с диагональными акцентами, леопардовый логотип, шоу-матч стримеров, сетка, призовые и победители.',
-    colors: ['#FFFFFF', '#5A2A9C', '#1A1A1A'] },
-  { id: 'gnc-jun-2025', title: 'GNC · 27–29 июня', date: 'ИЮН 2025',
-    desc: 'Летний GNC 2025 (тогда турнир назывался GandonCup): регистрация, первый матч, правила, комьюнити-стримеры, составы и «зал победителей».',
-    colors: ['#6A2FBF', '#2B2B2B', '#EDEDED'] },
-  { id: 'gnc-apr-2025', title: 'GNC · 26–27 апреля', date: 'АПР 2025',
-    desc: 'Чёрно-оранжевая айдентика турнира (тогда ещё GandonCup), который так и не состоялся: анонсы, регистрация, обновление правил и турнирная сетка.',
-    colors: ['#FF6A13', '#1E1E1E', '#FFFFFF'] },
-  { id: 'stadium', title: 'GNC в Стадионе', date: 'СЕН–ОКТ 2025',
-    desc: 'Временное событие и турнир в режиме «Стадион»: сине-белый стиль, регистрация, правила, рекламные баннеры для Twitch.',
-    colors: ['#1366D6', '#FFFFFF', '#0B0B0B'] },
-  { id: 'web', title: 'Web / UI концепты', date: 'GNCOW.RU',
-    desc: 'Макеты страниц сайта турниров: команды, зал славы, расписание матчей.',
-    colors: ['#0D1B2A', '#1E7BD8', '#FFFFFF'] },
-  { id: 'logos', title: 'Логотипы', date: 'IDENTITY',
-    desc: 'Знак GNC и логотип ///GNC, версии для Overwatch GNC, «Стадиона» и ранних сезонов, леопардовый GNC, иконка турнира и фанатский логотип в стилистике Diablo.',
-    colors: ['#9E1B22', '#2A8CC4', '#000000', '#FFFFFF'] },
-];
+/* Список проектов лежит в assets/projects.js — правь там */
+const PROJECTS = window.PORTFOLIO_PROJECTS.map(p => ({ ...p }));
 
 // Проекты, добавленные через админ-панель Supabase.
 if (Array.isArray(window.PORTFOLIO_ADMIN_DATA?.projects)) {
@@ -71,6 +43,9 @@ function fmt(w, h, proj) {
 
 const $ = (s, el = document) => el.querySelector(s);
 const pad = n => String(n).padStart(2, '0');
+// Перевод строки интерфейса (i18n.js) и экранирование для вставки в HTML
+const tr = s => (window.portfolioTranslate ? window.portfolioTranslate(s) : s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* Палитра проекта: полоса из цветов с HEX-кодами */
 function palette(colors) {
@@ -82,6 +57,15 @@ function palette(colors) {
     `<i style="background:${c};color:${lum(c) > .55 ? '#000' : '#fff'}"><em>${c.slice(1).toUpperCase()}</em></i>`).join('');
 }
 const all = [];   // плоский список для лайтбокса
+
+/* Картинка не загрузилась (сбой сети/CDN) — пробуем ещё раз через пару секунд */
+function retryOnError(img, tries = 2) {
+  img.addEventListener('error', function onErr() {
+    if (tries-- <= 0) { img.removeEventListener('error', onErr); img.closest('.card')?.classList.add('card--broken'); return; }
+    const base = img.src.replace(/[?&]retry=\d+$/, '');
+    setTimeout(() => { img.src = base + (base.includes('?') ? '&' : '?') + 'retry=' + Date.now(); }, 1500);
+  });
+}
 
 /* ---------- CONTACTS ---------- */
 const contacts = CONFIG.contacts.filter(c => c.url);
@@ -119,8 +103,8 @@ $('#projCount').textContent = `${PROJECTS.length} ПРОЕКТОВ / ${total} Р
 $('#plist').innerHTML = PROJECTS.map((p, i) => `
   <li><a href="#p-${p.id}">
     <span class="p-no">PRJ_${pad(i + 1)}</span>
-    <span class="p-name">${p.title}</span>
-    <span class="p-date">${p.date}</span>
+    <span class="p-name">${esc(p.title)}</span>
+    <span class="p-date">${esc(p.date)}</span>
     <span class="p-sw">${palette(p.colors)}</span>
     <span class="p-cnt">${pad((WORKS[p.id] || []).length)} ↗</span>
   </a></li>`).join('');
@@ -132,8 +116,8 @@ PROJECTS.forEach((p, pi) => {
   sec.className = 'proj'; sec.id = 'p-' + p.id;
   sec.innerHTML = `
     <header class="proj__head">
-      <div><p class="proj__code">PRJ_${pad(pi + 1)} // ${p.date}</p><h3 class="proj__title">${p.title}</h3></div>
-      <p class="proj__desc">${p.desc}</p>
+      <div><p class="proj__code">PRJ_${pad(pi + 1)} // ${esc(p.date)}</p><h3 class="proj__title">${esc(p.title)}</h3></div>
+      <p class="proj__desc">${esc(p.desc)}</p>
       <div class="proj__meta"><div class="proj__sw">${palette(p.colors)}</div><span>${pad(works.length)} РАБОТ</span></div>
     </header>
     <div class="grid"></div>`;
@@ -144,7 +128,8 @@ PROJECTS.forEach((p, pi) => {
     const a = document.createElement('button');
     a.className = 'card'; a.dataset.fmt = f; a.dataset.i = idx;
     a.setAttribute('aria-label', `${p.title} — ${tr(f)}`);
-    a.innerHTML = `<img src="${esc(w.thumb)}" width="${w.w}" height="${w.h}" loading="lazy" decoding="async" alt="${p.title} — ${f}">`;
+    a.innerHTML = `<img src="${esc(w.thumb || w.src)}" width="${w.w}" height="${w.h}" loading="lazy" decoding="async" alt="${esc(p.title)} — ${f}">`;
+    retryOnError(a.firstChild);
     if (k >= CONFIG.previewCount) a.hidden = true, a.dataset.extra = '1';
     sec._cards.push(a);
   });
@@ -247,13 +232,9 @@ addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') step(1);
 });
 
-/* ---------- NAV ---------- */
-const nav = $('.nav'), burger = $('.nav__burger');
-const setMenu = o => { nav.classList.toggle('open', o); burger.setAttribute('aria-expanded', o); document.body.style.overflow = o ? 'hidden' : ''; };
-burger.onclick = () => setMenu(!nav.classList.contains('open'));
-$('.nav__backdrop').onclick = () => setMenu(false);
-addEventListener('keydown', e => { if (e.key === 'Escape' && nav.classList.contains('open')) setMenu(false); });
-nav.querySelectorAll('.nav__links a').forEach(a => a.addEventListener('click', () => setMenu(false)));
+/* ---------- FOOTER ---------- */
+// Мобильное меню — в nav.js
 $('#year').textContent = new Date().getFullYear();
 
 window.translatePortfolio();
+dispatchEvent(new Event('portfolio:ready'));   // i18n.js возвращает позицию прокрутки после смены языка

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;700&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=67">
+<link rel="stylesheet" href="styles.css?v=69">
 <style>
 .admin{max-width:1100px;margin:0 auto;padding:clamp(20px,5vw,64px)}
 .admin h1{font-size:clamp(28px,5vw,54px);text-transform:uppercase;margin-bottom:12px}
@@ -15,8 +15,8 @@
 .admin p{font-family:var(--f-mono);font-size:13px;color:var(--muted);line-height:1.6}
 .admin-card{border:1px solid var(--line);padding:clamp(16px,3vw,28px);margin-top:22px;background:var(--night-2)}
 .admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.admin label{display:flex;flex-direction:column;gap:7px;font:12px var(--f-mono);color:var(--muted);text-transform:uppercase}
-.admin input,.admin textarea,.admin select{width:100%;padding:12px;background:#080808;color:var(--white);border:1px solid var(--line);border-radius:3px;font:14px var(--f-mono)}
+.admin label,.viewer label{display:flex;flex-direction:column;gap:7px;font:12px var(--f-mono);color:var(--muted);text-transform:uppercase}
+.admin input,.admin textarea,.admin select,.viewer input,.viewer select{width:100%;padding:12px;background:#080808;color:var(--white);border:1px solid var(--line);border-radius:3px;font:14px var(--f-mono)}
 .admin textarea{min-height:100px;resize:vertical}
 .admin .wide{grid-column:1/-1}
 .admin .btn{margin-top:14px}
@@ -25,10 +25,52 @@
 .admin-item strong{font:600 13px var(--f-mono);overflow-wrap:anywhere}
 .admin-item small{display:block;color:var(--muted);font:11px var(--f-mono);margin-top:5px}
 .admin-actions{display:flex;gap:8px;flex-wrap:wrap}
-.admin-actions button{border:1px solid var(--line);padding:8px 10px;font:11px var(--f-mono)}
+.admin-actions button{color:var(--white);border:1px solid var(--line);padding:8px 10px;font:11px var(--f-mono)}
 .admin-actions button:hover{border-color:var(--acid);color:var(--acid)}
 .status{margin-top:12px!important;white-space:pre-wrap}
 .hidden{display:none!important}
+.admin code{color:var(--white)}
+.gal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.gal-head h2{margin-bottom:0}
+.gal-site{font:12px var(--f-mono);color:var(--acid)}
+.gal-tools{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.4fr;gap:12px;margin-top:18px}
+.gal-summary{margin-top:14px!important}
+.gal-summary b{color:var(--white);font-weight:600}
+.gal-summary .bad{color:#ff6b6b}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:14px 0 18px}
+.gal-group{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;margin-top:14px;padding-bottom:6px;border-bottom:1px solid var(--line);font:600 12px var(--f-mono);text-transform:uppercase}
+.gal-group:first-child{margin-top:0}
+.gal-group span{color:var(--muted);font-weight:400}
+.tile{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);background:#080808;text-align:left;cursor:zoom-in;overflow:hidden}
+.tile:hover,.tile:focus-visible{border-color:var(--acid)}
+.tile__img{aspect-ratio:1;display:grid;place-items:center;background:#0d0d0d;overflow:hidden}
+.tile__img img{width:100%;height:100%;object-fit:contain}
+.tile__cap{padding:7px 8px;font:11px var(--f-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile__cap small{display:block;margin-top:3px;font-size:9px;letter-spacing:.05em;color:#5f5f5f}
+.tile__badge{position:absolute;top:6px;left:6px;padding:2px 6px;font:600 9px var(--f-mono);letter-spacing:.06em;background:var(--acid);color:#000}
+.tile--broken .tile__img::after{content:"НЕ ЗАГРУЗИЛОСЬ";font:600 10px var(--f-mono);color:#ff6b6b}
+.tile--broken .tile__img img{display:none}
+.tile--broken{border-color:#ff6b6b}
+.viewer{position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:minmax(0,1fr) 340px;background:rgba(0,0,0,.94)}
+.viewer__img{display:grid;place-items:center;padding:24px;min-height:0}
+.viewer__img img{max-width:100%;max-height:calc(100vh - 48px);object-fit:contain;transition:opacity .2s}
+.viewer__img img.loading{opacity:0}
+.viewer__side{position:relative;display:flex;flex-direction:column;gap:14px;padding:56px 22px 22px;background:var(--night-2);border-left:1px solid var(--line);overflow:auto}
+.viewer__side h2{font-size:18px;margin:0;overflow-wrap:anywhere}
+.viewer__close{position:absolute;top:14px;right:14px;width:34px;height:34px;border:1px solid var(--line);font-size:14px}
+.viewer__close:hover{border-color:var(--acid);color:var(--acid)}
+.viewer__meta{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font:12px var(--f-mono)}
+.viewer__meta dt{color:var(--muted)}
+.viewer__meta dd{margin:0;overflow-wrap:anywhere}
+.viewer__meta a{color:var(--acid)}
+#viewerForm{display:grid;gap:10px}
+.viewer__nav{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;font:12px var(--f-mono);color:var(--muted)}
+.viewer__nav button{border:1px solid var(--line);padding:8px 10px;font:11px var(--f-mono);color:var(--white)}
+.viewer__nav button:hover{border-color:var(--acid);color:var(--acid)}
+.upload-preview{max-height:160px;max-width:100%;border:1px solid var(--line);margin-top:8px}
+.format-hint{font:11px var(--f-mono);color:var(--acid);text-transform:none}
+@media(max-width:1000px){.gal-tools{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){.gal-tools{grid-template-columns:1fr}.viewer{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}.viewer__side{border-left:0;border-top:1px solid var(--line);max-height:50vh;padding-top:22px}.viewer__img img{max-height:calc(50vh - 48px)}}
 @media(max-width:650px){.admin-grid{grid-template-columns:1fr}.admin-item{grid-template-columns:1fr}.admin .wide{grid-column:auto}}
 </style>
 </head>
@@ -81,20 +123,67 @@
           <label class="wide">Раздел<select id="workProject" required></select></label>
           <label>Название работы<input id="workTitle" required maxlength="120" placeholder="Название / подпись"></label>
           <label>Название работы EN<input id="workTitleEn" maxlength="120" placeholder="English work title"></label>
+          <label>Категория (фильтр на сайте)<select id="workFormat"></select></label>
           <label>Порядок отображения<input id="workOrder" type="number" value="0"></label>
-          <label class="wide">Изображение<input id="workFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" required></label>
+          <label class="wide">Изображение<input id="workFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" required><img id="workPreview" class="upload-preview hidden" alt="Превью выбранного файла"><span id="workFormatHint" class="format-hint"></span></label>
           <div class="wide"><button class="btn btn--primary" type="submit">Загрузить работу</button></div>
         </form>
-        <p>JPG, PNG, WebP, GIF или AVIF — до 12 МБ. Английские поля необязательны: если перевод не заполнен, посетитель увидит русский текст. Существующие работы из архива редактируются в исходных файлах; здесь доступны новые проекты и загрузки.</p>
-        <div id="workList" class="admin-list"></div>
+        <p>JPG, PNG, WebP, GIF или AVIF — до 12 МБ. Английские поля необязательны: если перевод не заполнен, посетитель увидит русский текст. Все текущие работы — ниже, в блоке «Работы на сайте».</p>
+      </section>
+
+      <section class="admin-card" id="gallerySection">
+        <div class="gal-head">
+          <h2>Работы на сайте</h2>
+          <a class="gal-site" href="./" target="_blank" rel="noopener">Открыть сайт ↗</a>
+        </div>
+        <div class="gal-tools">
+          <label>Раздел<select id="galProject"></select></label>
+          <label>Источник<select id="galSource">
+            <option value="all">Все</option>
+            <option value="admin">Загружены через админку</option>
+            <option value="static">Архив (файлы репозитория)</option>
+          </select></label>
+          <label>Категория<select id="galFormat"></select></label>
+          <label>Поиск<input id="galSearch" type="search" placeholder="Название или имя файла"></label>
+        </div>
+        <p id="galSummary" class="gal-summary"></p>
+        <div id="gallery" class="gal-grid"></div>
+        <p>Работы из архива редактируются в файлах <code>assets/projects.js</code> и <code>assets/works.js</code>. Работы, загруженные здесь, можно переименовать, переставить или удалить — кликни по карточке.</p>
       </section>
       <button class="btn btn--ghost" id="logoutBtn" type="button">Выйти</button>
     </div>
     <p class="status" id="status" role="status"></p>
   </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
-<script src="admin.js?v=67"></script>
+
+<div class="viewer hidden" id="viewer" role="dialog" aria-modal="true" aria-label="Просмотр работы">
+  <div class="viewer__img"><img id="viewerImg" alt=""></div>
+  <aside class="viewer__side">
+    <button class="viewer__close" id="viewerClose" type="button" aria-label="Закрыть">✕</button>
+    <p class="label" id="viewerSource"></p>
+    <h2 id="viewerTitle"></h2>
+    <dl class="viewer__meta" id="viewerMeta"></dl>
+    <form id="viewerForm" class="hidden">
+      <label>Название<input id="viewerTitleRu" maxlength="120"></label>
+      <label>Название EN<input id="viewerTitleEn" maxlength="120"></label>
+      <label>Категория<select id="viewerFormat"></select></label>
+      <label>Порядок отображения<input id="viewerOrder" type="number" step="1"></label>
+      <div class="admin-actions">
+        <button type="submit">Сохранить</button>
+        <button type="button" id="viewerDelete">Удалить</button>
+      </div>
+    </form>
+    <div class="viewer__nav">
+      <button type="button" id="viewerPrev" aria-label="Предыдущая">‹ Назад</button>
+      <span id="viewerPos"></span>
+      <button type="button" id="viewerNext" aria-label="Следующая">Вперёд ›</button>
+    </div>
+  </aside>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js?v=69"></script>
+<script src="assets/projects.js?v=69"></script>
+<script src="assets/works.js?v=69"></script>
+<script src="admin.js?v=69"></script>
 </body>
 </html>
