@@ -43,21 +43,20 @@ const PROJECTS = [
 
 // Проекты, добавленные через админ-панель Supabase.
 if (Array.isArray(window.PORTFOLIO_ADMIN_DATA?.projects)) {
-  PROJECTS.push(...window.PORTFOLIO_ADMIN_DATA.projects.map(p => ({
+  const added = window.PORTFOLIO_ADMIN_DATA.projects.map(p => ({
     id: p.id,
     title: window.PORTFOLIO_LANG === 'en' ? (p.title_en || p.title) : p.title,
     date: (window.PORTFOLIO_LANG === 'en' ? p.date_en || p.date : p.date) || '',
     desc: (window.PORTFOLIO_LANG === 'en' ? p.description_en || p.description : p.description) || '',
-    colors: Array.isArray(p.colors) && p.colors.length ? p.colors : ['#C6FF00', '#141414', '#F2F2F2']
-  })));
+    colors: Array.isArray(p.colors) && p.colors.length ? p.colors : ['#C6FF00', '#141414', '#F2F2F2'],
+    _pos: Math.floor(Number(p.sort_order)) || 0,
+    _created: p.created_at || ''
+  }));
+  added.filter(p => p._pos > 0)
+    .sort((a, b) => a._pos - b._pos || (a._created < b._created ? -1 : a._created > b._created ? 1 : 0))
+    .forEach(p => PROJECTS.splice(Math.min(p._pos - 1, PROJECTS.length), 0, p));
+  PROJECTS.push(...added.filter(p => !(p._pos > 0)));
 }
-
-const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const tr = window.portfolioTranslate;
-PROJECTS.forEach(p => {
-  p.title = esc(tr(p.title)); p.date = esc(tr(p.date)); p.desc = esc(tr(p.desc));
-  p.colors = p.colors.filter(c => /^#[0-9a-f]{6}$/i.test(c));
-});
 
 /* Формат работы по пропорциям */
 function fmt(w, h, proj) {
