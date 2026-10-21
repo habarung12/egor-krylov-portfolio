@@ -95,7 +95,7 @@
       date: $('projectDate').value.trim(),
       description: $('projectDescription').value.trim(),
       colors: $('projectColors').value.split(',').map(s => s.trim()).filter(s => /^#[0-9a-f]{6}$/i.test(s)).slice(0, 6),
-      sort_order: Number($('projectOrder').value) || 0
+      sort_order: Math.max(0, Math.floor(Number($('projectOrder').value)) || 0)
     };
     if (!payload.colors.length) payload.colors = ['#C6FF00', '#141414', '#F2F2F2'];
     status('Сохраняю раздел…');
@@ -106,6 +106,7 @@
     resetProjectForm(); await refresh(); status('Раздел сохранён.');
   }));
   $('cancelProjectEdit').addEventListener('click', resetProjectForm);
+  $('projectToTop').addEventListener('click', () => { $('projectOrder').value = 1; });
   $('projectList').addEventListener('click', async e => {
     const edit = e.target.closest('[data-edit-project]');
     const del = e.target.closest('[data-delete-project]');
