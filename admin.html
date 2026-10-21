@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админ-панель портфолио — Егор Крылов</title>
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --card: #18181d;
+      --border: #2a2a32;
+      --text: #f0f0f5;
+      --muted: #8e8e9e;
+      --accent: #ffffff;
+      --danger: #ff4d4d;
+      --success: #2ecc71;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 32px 20px;
+      line-height: 1.5;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    h1 { font-size: 24px; font-weight: 600; }
+    h2 { font-size: 18px; margin-bottom: 16px; font-weight: 500; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    label { font-size: 13px; color: var(--muted); }
+    input, textarea, select {
+      background: #101014;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-danger {
+      background: rgba(255, 77, 77, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(255, 77, 77, 0.3);
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    .btn-success { background: var(--success); color: #000; }
+    .works-list { display: flex; flex-direction: column; gap: 12px; }
+    .work-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #121216;
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      border-radius: 8px;
+      gap: 16px;
+    }
+    .work-info h3 { font-size: 15px; margin-bottom: 4px; }
+    .work-info p { font-size: 12px; color: var(--muted); }
+    .actions { display: flex; gap: 8px; align-items: center; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    pre {
+      background: #09090b;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      font-size: 12px;
+      max-height: 300px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>Управление портфолио</h1>
+      <p class="hint">Добавление новых съемок и проектов в <code>assets/works.js</code></p>
+    </div>
+    <div class="actions">
+      <a href="index.html" class="btn btn-secondary" style="text-decoration:none;">← На сайт</a>
+      <button class="btn btn-success" onclick="downloadWorksJS()">Скачать works.js</button>
+    </div>
+  </header>
+
+  <!-- Форма добавления проекта -->
+  <div class="card">
+    <h2>Добавить новую работу / проект</h2>
+    <form id="workForm" onsubmit="saveWork(event)">
+      <input type="hidden" id="editIndex" value="-1">
+      
+      <div class="grid">
+        <div class="form-group">
+          <label>ID / Название папки (slug) *</label>
+          <input type="text" id="slug" placeholder="например: gnc-oct-2026" required>
+          <span class="hint">Папка в <code>assets/works/название-папки/</code></span>
+        </div>
+        <div class="form-group">
+          <label>Дата / Год</label>
+          <input type="text" id="date" placeholder="например: 2026 / Oct 2026">
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="form-group">
+          <label>Название проекта (RU) *</label>
+          <input type="text" id="titleRu" placeholder="Название на русском" required>
+        </div>
+        <div class="form-group">
+          <label>Название проекта (EN) *</label>
+          <input type="text" id="titleEn" placeholder="Project Title in English" required>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="form-group">
+          <label>Описание / Категория (RU)</label>
+          <input type="text" id="descRu" placeholder="Краткое описание или тег">
+        </div>
+        <div class="form-group">
+          <label>Описание / Категория (EN)</label>
+          <input type="text" id="descEn" placeholder="Short description or tag">
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="form-group">
+          <label>Количество фото (автогенерация 01.webp, 02.webp...)</label>
+          <input type="number" id="photoCount" min="1" max="100" value="10" onchange="generateFilesFromCount()">
+          <span class="hint">Или укажи список файлов вручную ниже</span>
+        </div>
+        <div class="form-group">
+          <label>Ссылка на внешний проект (необязательно)</label>
+          <input type="url" id="externalUrl" placeholder="https://...">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Список изображений (через запятую)</label>
+        <textarea id="imagesList" rows="3"></textarea>
+        <span class="hint">Для каждого файла система автоматически учитывает превью <code>_t.webp</code> (например, <code>01.webp</code> и <code>01_t.webp</code>).</span>
+      </div>
+
+      <div class="actions" style="margin-top: 16px;">
+        <button type="submit" class="btn" id="submitBtn">Добавить проект</button>
+        <button type="button" class="btn btn-secondary" onclick="resetForm()">Очистить</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Список существующих проектов -->
+  <div class="card">
+    <h2>Текущие работы (<span id="worksCount">0</span>)</h2>
+    <div id="worksList" class="works-list"></div>
+  </div>
+
+  <!-- Предпросмотр кода -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h2 style="margin:0;">Сгенерированный код <code>assets/works.js</code></h2>
+      <button class="btn btn-secondary" onclick="copyCode()">Скопировать код</button>
+    </div>
+    <pre id="codePreview"></pre>
+  </div>
+</div>
+
+<!-- Подключаем текущий файл работ -->
+<script src="assets/works.js"></script>
+<script>
+  // Инициализация массива работ из глобальной переменной в works.js (или localStorage)
+  let worksData = [];
+  let globalVarName = 'WORKS';
+
+  function initAdmin() {
+    // Проверяем стандартные имена переменных, которые могут быть в works.js
+    if (typeof WORKS !== 'undefined') { worksData = Array.isArray(WORKS) ? [...WORKS] : []; globalVarName = 'WORKS'; }
+    else if (typeof works !== 'undefined') { worksData = Array.isArray(works) ? [...works] : []; globalVarName = 'works'; }
+    else if (window.PORTFOLIO_WORKS) { worksData = [...window.PORTFOLIO_WORKS]; globalVarName = 'PORTFOLIO_WORKS'; }
+
+    const saved = localStorage.getItem('portfolio_admin_draft');
+    if (saved) {
+      try { worksData = JSON.parse(saved); } catch(e) {}
+    }
+
+    generateFilesFromCount();
+    renderWorks();
+  }
+
+  function generateFilesFromCount() {
+    const count = parseInt(document.getElementById('photoCount').value) || 1;
+    const files = [];
+    for (let i = 1; i <= count; i++) {
+      const num = String(i).padStart(2, '0');
+      files.push(`${num}.webp`);
+    }
+    document.getElementById('imagesList').value = files.join(', ');
+  }
+
+  function renderWorks() {
+    const list = document.getElementById('worksList');
+    document.getElementById('worksCount').textContent = worksData.length;
+    list.innerHTML = '';
+
+    worksData.forEach((item, index) => {
+      const titleRu = item.title?.ru || item.title_ru || item.title || item.id || item.slug || `Проект #${index + 1}`;
+      const titleEn = item.title?.en || item.title_en || '';
+      const folder = item.folder || item.slug || item.id || '';
+      const imgCount = Array.isArray(item.images) ? item.images.length : (item.count || 0);
+
+      const div = document.createElement('div');
+      div.className = 'work-item';
+      div.innerHTML = `
+        <div class="work-info">
+          <h3>${titleRu} ${titleEn ? `<span style="color:var(--muted); font-weight:400;">/ ${titleEn}</span>` : ''}</h3>
+          <p>Папка: <code>assets/works/${folder}/</code> • Фото: ${imgCount} шт. ${item.date ? `• Дата: ${item.date}` : ''}</p>
+        </div>
+        <div class="actions">
+          <button class="btn btn-secondary" style="padding:6px 10px; font-size:12px;" onclick="moveWork(${index}, -1)">↑</button>
+          <button class="btn btn-secondary" style="padding:6px 10px; font-size:12px;" onclick="moveWork(${index}, 1)">↓</button>
+          <button class="btn btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="editWork(${index})">Изменить</button>
+          <button class="btn btn-danger" onclick="deleteWork(${index})">Удалить</button>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+
+    updateCodePreview();
+    localStorage.setItem('portfolio_admin_draft', JSON.stringify(worksData));
+  }
+
+  function saveWork(e) {
+    e.preventDefault();
+    const editIndex = parseInt(document.getElementById('editIndex').value);
+    const slug = document.getElementById('slug').value.trim();
+    const date = document.getElementById('date').value.trim();
+    const titleRu = document.getElementById('titleRu').value.trim();
+    const titleEn = document.getElementById('titleEn').value.trim();
+    const descRu = document.getElementById('descRu').value.trim();
+    const descEn = document.getElementById('descEn').value.trim();
+    const externalUrl = document.getElementById('externalUrl').value.trim();
+    
+    const rawImages = document.getElementById('imagesList').value
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const images = rawImages.map(img => {
+      const base = img.replace(/\.webp$/i, '');
+      return {
+        full: `assets/works/${slug}/${base}.webp`,
+        thumb: `assets/works/${slug}/${base}_t.webp`,
+        file: `${base}.webp`
+      };
+    });
+
+    const newEntry = {
+      id: slug,
+      slug: slug,
+      folder: slug,
+      date: date,
+      title: { ru: titleRu, en: titleEn },
+      title_ru: titleRu,
+      title_en: titleEn,
+      description: { ru: descRu, en: descEn },
+      url: externalUrl || undefined,
+      count: images.length,
+      images: images
+    };
+
+    if (editIndex >= 0) {
+      worksData[editIndex] = { ...worksData[editIndex], ...newEntry };
+    } else {
+      worksData.unshift(newEntry); // Добавляем новую работу в начало списка
+    }
+
+    resetForm();
+    renderWorks();
+  }
+
+  function editWork(index) {
+    const item = worksData[index];
+    document.getElementById('editIndex').value = index;
+    document.getElementById('slug').value = item.slug || item.id || item.folder || '';
+    document.getElementById('date').value = item.date || '';
+    document.getElementById('titleRu').value = item.title?.ru || item.title_ru || item.title || '';
+    document.getElementById('titleEn').value = item.title?.en || item.title_en || item.title || '';
+    document.getElementById('descRu').value = item.description?.ru || item.desc_ru || '';
+    document.getElementById('descEn').value = item.description?.en || item.desc_en || '';
+    document.getElementById('externalUrl').value = item.url || '';
+
+    if (Array.isArray(item.images)) {
+      const files = item.images.map(img => typeof img === 'string' ? img.split('/').pop() : (img.file || img.full.split('/').pop()));
+      document.getElementById('imagesList').value = files.join(', ');
+      document.getElementById('photoCount').value = files.length;
+    }
+
+    document.getElementById('submitBtn').textContent = 'Сохранить изменения';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function deleteWork(index) {
+    if (confirm('Удалить этот проект из списка?')) {
+      worksData.splice(index, 1);
+      renderWorks();
+    }
+  }
+
+  function moveWork(index, dir) {
+    const target = index + dir;
+    if (target < 0 || target >= worksData.length) return;
+    const temp = worksData[index];
+    worksData[index] = worksData[target];
+    worksData[target] = temp;
+    renderWorks();
+  }
+
+  function resetForm() {
+    document.getElementById('workForm').reset();
+    document.getElementById('editIndex').value = -1;
+    document.getElementById('submitBtn').textContent = 'Добавить проект';
+    generateFilesFromCount();
+  }
+
+  function generateJSContent() {
+    return `window.${globalVarName} = ${JSON.stringify(worksData, null, 2)};\n`;
+  }
+
+  function updateCodePreview() {
+    document.getElementById('codePreview').textContent = generateJSContent();
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(generateJSContent());
+    alert('Код скопирован в буфер обмена! Вставь его в assets/works.js');
+  }
+
+  function downloadWorksJS() {
+    const blob = new Blob([generateJSContent()], { type: 'application/javascript;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'works.js';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  window.addEventListener('DOMContentLoaded', initAdmin);
+</script>
+</body>
+</html>
