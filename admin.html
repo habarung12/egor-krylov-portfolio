@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;700&family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=70">
+<link rel="stylesheet" href="styles.css?v=72">
 <style>
 .admin{max-width:1100px;margin:0 auto;padding:clamp(20px,5vw,64px)}
 .admin h1{font-size:clamp(28px,5vw,54px);text-transform:uppercase;margin-bottom:12px}
@@ -51,6 +51,9 @@
 .tile--broken .tile__img::after{content:"НЕ ЗАГРУЗИЛОСЬ";font:600 10px var(--f-mono);color:#ff6b6b}
 .tile--broken .tile__img img{display:none}
 .tile--broken{border-color:#ff6b6b}
+.tile--hidden .tile__img img{opacity:.25}
+.tile__badge--hidden{background:#ff6b6b}
+.viewer__archive p{font:12px/1.5 var(--f-mono);color:var(--muted);margin:0 0 10px}
 .viewer{position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:minmax(0,1fr) 340px;background:rgba(0,0,0,.94)}
 .viewer__img{display:grid;place-items:center;padding:24px;min-height:0}
 .viewer__img img{max-width:100%;max-height:calc(100vh - 48px);object-fit:contain;transition:opacity .2s}
@@ -142,6 +145,7 @@
             <option value="all">Все</option>
             <option value="admin">Загружены через админку</option>
             <option value="static">Архив (файлы репозитория)</option>
+            <option value="hidden">Скрытые с сайта</option>
           </select></label>
           <label>Категория<select id="galFormat"></select></label>
           <label>Поиск<input id="galSearch" type="search" placeholder="Название или имя файла"></label>
@@ -173,6 +177,10 @@
         <button type="button" id="viewerDelete">Удалить</button>
       </div>
     </form>
+    <div id="viewerArchive" class="viewer__archive hidden">
+      <p id="viewerArchiveNote"></p>
+      <div class="admin-actions"><button type="button" id="viewerHide"></button></div>
+    </div>
     <div class="viewer__nav">
       <button type="button" id="viewerPrev" aria-label="Предыдущая">‹ Назад</button>
       <span id="viewerPos"></span>
@@ -181,9 +189,9 @@
   </aside>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="supabase-config.js?v=70"></script>
-<script src="assets/projects.js?v=70"></script>
-<script src="assets/works.js?v=70"></script>
-<script src="admin.js?v=70"></script>
+<script src="supabase-config.js?v=72"></script>
+<script src="assets/projects.js?v=72"></script>
+<script src="assets/works.js?v=72"></script>
+<script src="admin.js?v=72"></script>
 </body>
 </html>

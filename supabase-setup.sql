@@ -91,3 +91,22 @@ drop policy if exists "Authenticated users can delete portfolio images" on stora
 create policy "Authenticated users can delete portfolio images"
 on storage.objects for delete to authenticated
 using (bucket_id = 'portfolio-images' and (select public.is_portfolio_admin()));
+
+-- Скрытые архивные работы (из assets/works.js). Файлы остаются в репозитории,
+-- но сайт их не показывает. src — путь вида assets/works/gnc-sep-2026/01.webp.
+create table if not exists public.portfolio_hidden_works (
+  src text primary key,
+  created_at timestamptz not null default now()
+);
+grant select on public.portfolio_hidden_works to anon;
+grant select, insert, update, delete on public.portfolio_hidden_works to authenticated;
+alter table public.portfolio_hidden_works enable row level security;
+
+drop policy if exists "Public can read hidden works" on public.portfolio_hidden_works;
+create policy "Public can read hidden works"
+on public.portfolio_hidden_works for select using (true);
+
+drop policy if exists "Admins can manage hidden works" on public.portfolio_hidden_works;
+create policy "Admins can manage hidden works"
+on public.portfolio_hidden_works for all to authenticated
+using ((select public.is_portfolio_admin())) with check ((select public.is_portfolio_admin()));

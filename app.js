@@ -10,26 +10,6 @@ const CONFIG = {
   previewCount: 12,
 };
 
-/* Список проектов лежит в assets/projects.js — правь там */
-const PROJECTS = window.PORTFOLIO_PROJECTS.map(p => ({ ...p }));
-
-// Проекты, добавленные через админ-панель Supabase.
-if (Array.isArray(window.PORTFOLIO_ADMIN_DATA?.projects)) {
-  const added = window.PORTFOLIO_ADMIN_DATA.projects.map(p => ({
-    id: p.id,
-    title: window.PORTFOLIO_LANG === 'en' ? (p.title_en || p.title) : p.title,
-    date: (window.PORTFOLIO_LANG === 'en' ? p.date_en || p.date : p.date) || '',
-    desc: (window.PORTFOLIO_LANG === 'en' ? p.description_en || p.description : p.description) || '',
-    colors: Array.isArray(p.colors) && p.colors.length ? p.colors : ['#C6FF00', '#141414', '#F2F2F2'],
-    _pos: Math.floor(Number(p.sort_order)) || 0,
-    _created: p.created_at || ''
-  }));
-  added.filter(p => p._pos > 0)
-    .sort((a, b) => a._pos - b._pos || (a._created < b._created ? -1 : a._created > b._created ? 1 : 0))
-    .forEach(p => PROJECTS.splice(Math.min(p._pos - 1, PROJECTS.length), 0, p));
-  PROJECTS.push(...added.filter(p => !(p._pos > 0)));
-}
-
 /* Формат работы по пропорциям */
 function fmt(w, h, proj) {
   if (proj === 'web') return 'WEB';
@@ -46,6 +26,13 @@ const pad = n => String(n).padStart(2, '0');
 // Перевод строки интерфейса (i18n.js) и экранирование для вставки в HTML
 const tr = s => (window.portfolioTranslate ? window.portfolioTranslate(s) : s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Текст проекта: у проектов из админки свой английский вариант, его подставляет i18n.js.
+// Архивные проекты переводятся по словарю; span нужен, чтобы текст был отдельным узлом
+// (иначе «PRJ_01 // СЕН 2026» не найдётся в словаре целиком).
+const bi = (p, key) => p.en
+  ? `<span data-ru="${esc(p[key])}" data-en="${esc(p.en[key])}">${esc(p[key])}</span>`
+  : `<span>${esc(p[key])}</span>`;
+const isEn = () => window.PORTFOLIO_LANG === 'en';
 
 /* Палитра проекта: полоса из цветов с HEX-кодами */
 function palette(colors) {
@@ -56,7 +43,7 @@ function palette(colors) {
   return colors.map(c =>
     `<i style="background:${c};color:${lum(c) > .55 ? '#000' : '#fff'}"><em>${c.slice(1).toUpperCase()}</em></i>`).join('');
 }
-const all = [];   // плоский список для лайтбокса
+let all = [];   // плоский список для лайтбокса
 
 /* Картинка не загрузилась (сбой сети/CDN) — пробуем ещё раз через пару секунд */
 function retryOnError(img, tries = 2) {
@@ -83,10 +70,6 @@ $('#contactList').addEventListener('click', async e => {
   setTimeout(() => { b.textContent = tr('КОПИРОВАТЬ'); }, 1600);
 });
 
-/* ---------- PROJECTS INDEX + WORKS ---------- */
-const total = PROJECTS.reduce((s, p) => s + (WORKS[p.id] || []).length, 0);
-$('#projCount').textContent = `${PROJECTS.length} ПРОЕКТОВ / ${total} РАБОТ`;
-
 /* ---------- HERO: фон из работ ---------- */
 (function heroBg() {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -100,52 +83,148 @@ $('#projCount').textContent = `${PROJECTS.length} ПРОЕКТОВ / ${total} Р
   if (!reduce) setInterval(() => show(cur + 1), 6500);
 })();
 
-$('#plist').innerHTML = PROJECTS.map((p, i) => `
+/* ---------- ДАННЫЕ: архив + админка ---------- */
+// Архив (assets/projects.js, assets/works.js) показывается сразу. Проекты из админки
+// берутся из кеша прошлого визита, затем обновляются из Supabase — страница не ждёт базу.
+const CACHE_KEY = 'portfolio-admin-cache-v1';
+const EMPTY_ADMIN = { projects: [], works: [], hidden: [] };
+function readCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || EMPTY_ADMIN; } catch { return EMPTY_ADMIN; }
+}
+async function fetchAdminData() {
+  const url = window.PORTFOLIO_SUPABASE_URL, key = window.PORTFOLIO_SUPABASE_ANON_KEY;
+  if (!url || !key || url.includes('YOUR-PROJECT')) return EMPTY_ADMIN;
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 15000);
+  const get = async (path, optional) => {
+    const r = await fetch(`${url}/rest/v1/${path}`, { headers: { apikey: key }, signal: ctrl.signal });
+    if (!r.ok) { if (optional) return []; throw new Error(`${path}: ${r.status}`); }
+    return r.json();
+  };
+  try {
+    const [projects, works, hidden] = await Promise.all([
+      get('portfolio_projects?select=*&order=sort_order.asc'),
+      get('portfolio_works?select=*&order=sort_order.asc,created_at.asc'),
+      get('portfolio_hidden_works?select=src', true)   // таблицы может не быть, если SQL ещё не выполнен
+    ]);
+    return { projects, works, hidden: hidden.map(h => h.src) };
+  } finally { clearTimeout(timer); }
+}
+
+// Собирает итоговый список проектов и работ в порядке сайта
+function buildModel(admin) {
+  const hidden = new Set(admin.hidden || []);
+  const works = {};
+  const projects = window.PORTFOLIO_PROJECTS
+    .map(p => ({ ...p }))
+    .filter(p => {
+      const list = (window.WORKS[p.id] || []).filter(w => !hidden.has(w.src));
+      works[p.id] = list;
+      // архивный проект, в котором скрыли все работы, тоже убираем
+      return list.length || !(window.WORKS[p.id] || []).length;
+    });
+  const added = (admin.projects || []).map(p => ({
+    id: p.id,
+    title: p.title, date: p.date || '', desc: p.description || '',
+    // английские варианты — для переключения языка на ходу (см. bi())
+    en: { title: p.title_en || '', date: p.date_en || '', desc: p.description_en || '' },
+    colors: Array.isArray(p.colors) && p.colors.length ? p.colors : ['#C6FF00', '#141414', '#F2F2F2'],
+    _pos: Math.floor(Number(p.sort_order)) || 0,
+    _created: p.created_at || ''
+  }));
+  added.filter(p => p._pos > 0)
+    .sort((a, b) => a._pos - b._pos || (a._created < b._created ? -1 : a._created > b._created ? 1 : 0))
+    .forEach(p => projects.splice(Math.min(p._pos - 1, projects.length), 0, p));
+  projects.push(...added.filter(p => !(p._pos > 0)));
+  added.forEach(p => { works[p.id] = []; });
+  (admin.works || []).forEach(w => {
+    if (!works[w.project_id]) return;
+    works[w.project_id].push({
+      src: w.image_url, thumb: w.image_url, w: w.width || 1200, h: w.height || 800,
+      file: w.file_name || w.title || 'portfolio-image', fmt: w.format || undefined,
+      adminId: w.id, adminTitle: w.title || '', adminTitleEn: w.title_en || ''
+    });
+  });
+  return { projects, works };
+}
+
+/* ---------- PROJECTS INDEX + WORKS ---------- */
+const wrap = $('#projects-wrap');
+function render({ projects, works: byProject }) {
+  // сохраняем, что пользователь уже раскрыл, и закрываем просмотр — индексы работ поменяются
+  const expanded = new Set([...document.querySelectorAll('.proj.expanded')].map(s => s.id));
+  if (!lb.hidden) close();
+  all = [];
+
+  const total = projects.reduce((s, p) => s + byProject[p.id].length, 0);
+  $('#projCount').textContent = `${projects.length} ПРОЕКТОВ / ${total} РАБОТ`;
+
+  $('#plist').innerHTML = projects.map((p, i) => `
   <li><a href="#p-${p.id}">
     <span class="p-no">PRJ_${pad(i + 1)}</span>
-    <span class="p-name">${esc(p.title)}</span>
-    <span class="p-date">${esc(p.date)}</span>
+    <span class="p-name">${bi(p, 'title')}</span>
+    <span class="p-date">${bi(p, 'date')}</span>
     <span class="p-sw">${palette(p.colors)}</span>
-    <span class="p-cnt">${pad((WORKS[p.id] || []).length)} ↗</span>
+    <span class="p-cnt">${pad(byProject[p.id].length)} ↗</span>
   </a></li>`).join('');
 
-const wrap = $('#projects-wrap');
-PROJECTS.forEach((p, pi) => {
-  const works = WORKS[p.id] || [];
-  const sec = document.createElement('article');
-  sec.className = 'proj'; sec.id = 'p-' + p.id;
-  sec.innerHTML = `
+  wrap.innerHTML = '';
+  projects.forEach((p, pi) => {
+    const works = byProject[p.id];
+    const sec = document.createElement('article');
+    sec.className = 'proj'; sec.id = 'p-' + p.id;
+    if (expanded.has(sec.id)) sec.classList.add('expanded');
+    sec.innerHTML = `
     <header class="proj__head">
-      <div><p class="proj__code">PRJ_${pad(pi + 1)} // ${esc(p.date)}</p><h3 class="proj__title">${esc(p.title)}</h3></div>
-      <p class="proj__desc">${esc(p.desc)}</p>
+      <div><p class="proj__code">PRJ_${pad(pi + 1)} // ${bi(p, 'date')}</p><h3 class="proj__title">${bi(p, 'title')}</h3></div>
+      <p class="proj__desc">${bi(p, 'desc')}</p>
       <div class="proj__meta"><div class="proj__sw">${palette(p.colors)}</div><span>${pad(works.length)} РАБОТ</span></div>
     </header>
     <div class="grid"></div>`;
-  sec._cards = [];
-  works.forEach((w, k) => {
-    const f = w.fmt || fmt(w.w, w.h, p.id);   // w.fmt — ручная категория из works.js
-    const idx = all.push({ ...w, fmt: f, proj: p.title }) - 1;
-    const a = document.createElement('button');
-    a.className = 'card'; a.dataset.fmt = f; a.dataset.i = idx;
-    a.setAttribute('aria-label', `${p.title} — ${tr(f)}`);
-    a.innerHTML = `<img src="${esc(w.thumb || w.src)}" width="${w.w}" height="${w.h}" loading="lazy" decoding="async" alt="${esc(p.title)} — ${f}">`;
-    retryOnError(a.firstChild);
-    if (k >= CONFIG.previewCount) a.hidden = true, a.dataset.extra = '1';
-    sec._cards.push(a);
+    sec._cards = [];
+    works.forEach((w, k) => {
+      const f = w.fmt || fmt(w.w, w.h, p.id);   // w.fmt — ручная категория из works.js / админки
+      const idx = all.push({ ...w, fmt: f, proj: p }) - 1;
+      const a = document.createElement('button');
+      a.className = 'card'; a.dataset.fmt = f; a.dataset.i = idx;
+      a.innerHTML = `<img src="${esc(w.thumb || w.src)}" width="${w.w}" height="${w.h}" loading="lazy" decoding="async" alt="">`;
+      labelCard(a);
+      retryOnError(a.firstChild);
+      if (k >= CONFIG.previewCount) a.hidden = true, a.dataset.extra = '1';
+      sec._cards.push(a);
+    });
+    if (works.length > CONFIG.previewCount && !sec.classList.contains('expanded')) {
+      const more = document.createElement('button');
+      more.className = 'more';
+      more.innerHTML = `<span class="more__plus">+</span><span class="more__txt">${tr('ПОКАЗАТЬ ВСЕ РАБОТЫ')}</span><span class="more__cnt">${works.length}</span><span class="more__arr">↓</span>`;
+      more.onclick = () => {
+        sec.classList.add('expanded'); applyFilter();
+        more.classList.add('leaving'); setTimeout(() => more.remove(), 260);
+      };
+      sec.appendChild(more);
+    }
+    wrap.appendChild(sec);
+    layout(sec);
   });
-  if (works.length > CONFIG.previewCount) {
-    const more = document.createElement('button');
-    more.className = 'more';
-    more.innerHTML = `<span class="more__plus">+</span><span class="more__txt">${tr('ПОКАЗАТЬ ВСЕ РАБОТЫ')}</span><span class="more__cnt">${works.length}</span><span class="more__arr">↓</span>`;
-    more.onclick = () => {
-      sec.classList.add('expanded'); applyFilter();
-      more.classList.add('leaving'); setTimeout(() => more.remove(), 260);
-    };
-    sec.appendChild(more);
-  }
-  wrap.appendChild(sec);
-  layout(sec);
-});
+
+  $('#filters').innerHTML = FORMATS.map(f => {
+    const n = f === 'ВСЕ' ? all.length : all.filter(w => w.fmt === f).length;
+    return `<button role="tab" aria-selected="${f === current}" data-f="${f}">${f}<sup>${n}</sup></button>`;
+  }).join('');
+  applyFilter();
+  window.translatePortfolio();
+}
+
+// Перерисовка, когда пришли свежие данные: блок вверху экрана остаётся на месте
+function rerender(model) {
+  const top = $('.nav')?.offsetHeight || 0;
+  const blocks = [...document.querySelectorAll('#hero, #projects, #works, .proj, #services, #contact')]
+    .filter(el => !el.hidden && el.getBoundingClientRect().bottom > top);
+  const anchor = blocks.filter(el => el.getBoundingClientRect().top <= top + 1).pop() || blocks[0];
+  const id = anchor?.id, before = anchor?.getBoundingClientRect().top;
+  render(model);
+  const after = id && document.getElementById(id);
+  if (after && scrollY > 0) window.scrollBy({ top: after.getBoundingClientRect().top - before, behavior: 'instant' });
+}
 
 /* ---------- MASONRY ---------- */
 // Раскладка детерминирована: первые N работ всегда стоят на тех же местах,
@@ -176,10 +255,6 @@ let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() 
 /* ---------- FILTERS ---------- */
 const FORMATS = ['ВСЕ', 'БАННЕР 16:9', 'ПОСТ 1:1', 'ВЕРТИКАЛЬ / TWITCH', 'ШАПКА / ПЛАШКА', 'ДЛЯ СТРИМА', 'ЛОГОТИП', 'WEB'];
 let current = 'ВСЕ';
-$('#filters').innerHTML = FORMATS.map(f => {
-  const n = f === 'ВСЕ' ? all.length : all.filter(w => w.fmt === f).length;
-  return `<button role="tab" aria-selected="${f === current}" data-f="${f}">${f}<sup>${n}</sup></button>`;
-}).join('');
 $('#filters').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   current = b.dataset.f;
@@ -212,10 +287,26 @@ const lb = $('#lb'), lbImg = $('#lbImg'), lbCap = $('#lbCap');
 let cur = 0;
 const visibleIdx = () => [...document.querySelectorAll('.proj')].filter(s => !s.hidden)
   .flatMap(s => s._cards.filter(c => !c.hidden).map(c => +c.dataset.i));
+// Подпись работы на текущем языке: своё название из админки или название проекта
+function workTitle(w) {
+  if (isEn() && w.adminTitleEn) return w.adminTitleEn;
+  if (w.adminTitle) return w.adminTitle;
+  const p = w.proj;
+  return isEn() ? (p.en ? p.en.title || p.title : tr(p.title)) : p.title;
+}
+function labelCard(c) {
+  const w = all[c.dataset.i], text = `${workTitle(w)} — ${tr(w.fmt)}`;
+  c.setAttribute('aria-label', text); c.firstChild.alt = text;
+}
+addEventListener('portfolio:lang', () => {
+  document.querySelectorAll('.card').forEach(labelCard);
+  if (!lb.hidden) open(cur);
+});
 function open(i) {
   cur = i; const w = all[i];
-  lbImg.src = w.src; lbImg.alt = `${w.adminTitle || w.proj} — ${tr(w.fmt)}`;
-  lbCap.textContent = `${w.adminTitle || w.proj} // ${tr(w.fmt)} // ${w.w}×${w.h}`;
+  const name = workTitle(w);
+  lbImg.src = w.src; lbImg.alt = `${name} — ${tr(w.fmt)}`;
+  lbCap.textContent = `${name} // ${tr(w.fmt)} // ${w.w}×${w.h}`;
   lb.hidden = false; document.body.style.overflow = 'hidden';
 }
 function close() { lb.hidden = true; lbImg.src = ''; document.body.style.overflow = ''; }
@@ -236,5 +327,12 @@ addEventListener('keydown', e => {
 // Мобильное меню — в nav.js
 $('#year').textContent = new Date().getFullYear();
 
-window.translatePortfolio();
-dispatchEvent(new Event('portfolio:ready'));   // i18n.js возвращает позицию прокрутки после смены языка
+/* ---------- START ---------- */
+// Сразу рисуем архив + кеш, потом тихо обновляем из Supabase, если что-то поменялось
+render(buildModel(readCache()));
+fetchAdminData().then(fresh => {
+  const str = JSON.stringify(fresh);
+  let old; try { old = localStorage.getItem(CACHE_KEY); } catch {}
+  try { localStorage.setItem(CACHE_KEY, str); } catch {}
+  if (str !== (old || JSON.stringify(EMPTY_ADMIN))) rerender(buildModel(fresh));
+}).catch(error => console.error('Не удалось загрузить работы из админки:', error));

@@ -13,6 +13,7 @@
   }
   const db = window.supabase.createClient(window.PORTFOLIO_SUPABASE_URL, window.PORTFOLIO_SUPABASE_ANON_KEY);
   let projects = [], works = [];
+  let hiddenSrc = new Set(), hiddenReady = false;   // скрытые архивные работы
   const guarded = handler => async event => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -49,12 +50,15 @@
       return status('У этого аккаунта нет прав администратора. Добавь его UUID в portfolio_admins через SQL Editor.');
     }
     $('loginPanel').classList.add('hidden'); $('dashboard').classList.remove('hidden');
-    const [p, w] = await Promise.all([
+    const [p, w, h] = await Promise.all([
       db.from('portfolio_projects').select('*').order('sort_order', { ascending: true }),
-      db.from('portfolio_works').select('*').order('sort_order', { ascending: true })
+      db.from('portfolio_works').select('*').order('sort_order', { ascending: true }),
+      db.from('portfolio_hidden_works').select('src')
     ]);
     if (p.error || w.error) return status('Ошибка загрузки: ' + (p.error || w.error).message);
     projects = p.data || []; works = w.data || [];
+    // Нет таблицы — значит, SQL из supabase-setup.sql ещё не выполнен заново
+    hiddenReady = !h.error; hiddenSrc = new Set((h.data || []).map(x => x.src));
     renderProjects(); renderProjectSelect(); renderGallery();
     status('Данные загружены.');
   }    
@@ -210,7 +214,7 @@
   function siteWorks() {
     return siteProjects().flatMap((p, pi) => {
       const items = p.source === 'static'
-        ? (window.WORKS?.[p.id] || []).map(w => ({ src: w.src, thumb: w.thumb || w.src, w: w.w, h: w.h, file: w.file, title: '', manualFmt: w.fmt || '', source: 'static' }))
+        ? (window.WORKS?.[p.id] || []).map(w => ({ src: w.src, thumb: w.thumb || w.src, w: w.w, h: w.h, file: w.file, title: '', manualFmt: w.fmt || '', source: 'static', hidden: hiddenSrc.has(w.src) }))
         : works.filter(w => w.project_id === p.id)
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.created_at < b.created_at ? -1 : 1))
           .map(w => ({ src: w.image_url, thumb: w.image_url, w: w.width, h: w.height, file: w.file_name, title: w.title, manualFmt: w.format || '', source: 'admin', row: w }));
@@ -230,7 +234,7 @@
       if (o.value !== 'all') o.textContent = `${o.value} (${all.filter(w => w.fmt === o.value).length})`;
     });
     shown = all.filter(w => (sel.value === 'all' || w.project.id === sel.value) &&
-      (source === 'all' || w.source === source) &&
+      (source === 'all' || (source === 'hidden' ? w.hidden : w.source === source)) &&
       (format === 'all' || w.fmt === format) &&
       (!q || [w.title, w.file, w.project.title].some(s => String(s || '').toLowerCase().includes(q))));
     broken = new Set();
@@ -240,8 +244,8 @@
         last = w.project;
         html += `<div class="gal-group">PRJ_${pad(w.projectNo)} · ${escapeHtml(w.project.title)}<span>${shown.filter(x => x.project === w.project).length} шт.</span></div>`;
       }
-      html += `<button type="button" class="tile" data-k="${k}" title="${escapeHtml(w.title || w.file)}">
-        ${w.source === 'admin' ? '<span class="tile__badge">АДМИНКА</span>' : ''}
+      html += `<button type="button" class="tile${w.hidden ? ' tile--hidden' : ''}" data-k="${k}" title="${escapeHtml(w.title || w.file)}">
+        ${w.source === 'admin' ? '<span class="tile__badge">АДМИНКА</span>' : ''}${w.hidden ? '<span class="tile__badge tile__badge--hidden">СКРЫТА</span>' : ''}
         <span class="tile__img"><img src="${escapeHtml(w.thumb)}" alt="" loading="lazy" decoding="async"></span>
         <span class="tile__cap">${escapeHtml(w.title || w.file || 'Работа')}<small>${w.fmt}</small></span>
       </button>`;
@@ -252,6 +256,7 @@
   function updateSummary(total = siteWorks().length) {
     const sections = new Set(shown.map(w => w.project.id)).size;
     $('galSummary').innerHTML = `Показано <b>${shown.length}</b> из <b>${total}</b> работ · разделов: <b>${sections}</b>` +
+      (hiddenSrc.size ? ` · скрыто с сайта: <b>${hiddenSrc.size}</b>` : '') +
       (broken.size ? ` · <span class="bad">не загрузилось: ${broken.size}</span>` : '');
   }
   ['galProject', 'galSource', 'galFormat'].forEach(id => $(id).addEventListener('change', renderGallery));
@@ -271,7 +276,7 @@
     img.classList.add('loading'); img.removeAttribute('src');   // не показываем прошлую картинку, пока грузится новая
     img.onload = img.onerror = () => img.classList.remove('loading');
     img.src = w.src; img.alt = w.title || w.file || '';
-    $('viewerSource').textContent = w.source === 'admin' ? 'ЗАГРУЖЕНО ЧЕРЕЗ АДМИНКУ' : 'АРХИВ · assets/works.js';
+    $('viewerSource').textContent = w.source === 'admin' ? 'ЗАГРУЖЕНО ЧЕРЕЗ АДМИНКУ' : 'АРХИВ · assets/works.js' + (w.hidden ? ' · СКРЫТА С САЙТА' : '');
     $('viewerTitle').textContent = w.title || w.file || 'Работа';
     const meta = [
       ['Раздел', `PRJ_${pad(w.projectNo)} · ${w.project.title}`],
@@ -285,6 +290,13 @@
     $('viewerMeta').innerHTML = meta.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join('') +
       `<dt>Оригинал</dt><dd><a href="${escapeHtml(w.src)}" target="_blank" rel="noopener">открыть ↗</a></dd>`;
     $('viewerForm').classList.toggle('hidden', !w.row);
+    $('viewerArchive').classList.toggle('hidden', !!w.row);
+    if (!w.row) {
+      $('viewerHide').textContent = w.hidden ? 'Вернуть на сайт' : 'Скрыть с сайта';
+      $('viewerArchiveNote').textContent = w.hidden
+        ? 'Работа скрыта: посетители её не видят. Файл остался в репозитории, вернуть можно в любой момент.'
+        : 'Архивную работу нельзя удалить из админки (файл лежит в репозитории GitHub), но можно скрыть с сайта.';
+    }
     if (w.row) {
       $('viewerTitleRu').value = w.row.title || ''; $('viewerTitleEn').value = w.row.title_en || '';
       $('viewerOrder').value = w.row.sort_order || 0;
@@ -328,8 +340,20 @@
     closeViewer(); await refresh();
     status(cleanup.error ? 'Работа удалена. Не удалось очистить файл: ' + cleanup.error.message : 'Работа удалена.');
   });
-  function reopenViewer(id) {
-    const k = shown.findIndex(x => x.row?.id === id);
+  $('viewerHide').addEventListener('click', async () => {
+    const w = shown[viewerIndex]; if (!w || w.row) return;
+    if (!hiddenReady) return status('Чтобы скрывать архивные работы, выполни заново supabase-setup.sql в Supabase → SQL Editor (добавилась таблица portfolio_hidden_works).');
+    const btn = $('viewerHide'); btn.disabled = true;
+    const { error } = w.hidden
+      ? await db.from('portfolio_hidden_works').delete().eq('src', w.src)
+      : await db.from('portfolio_hidden_works').insert({ src: w.src });
+    btn.disabled = false;
+    if (error) return status('Не удалось изменить видимость: ' + error.message);
+    await refresh(); reopenViewer(w.src);
+    status(w.hidden ? 'Работа снова видна на сайте.' : 'Работа скрыта с сайта.');
+  });
+  function reopenViewer(key) {
+    const k = shown.findIndex(x => x.row?.id === key || x.src === key);
     if (k >= 0) openViewer(k); else closeViewer();
   }
   function storagePath(url) {
